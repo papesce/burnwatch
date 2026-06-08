@@ -1,38 +1,65 @@
 # BurnWatch
 
-Real-time Claude API token usage dashboard. Polls `ccusage` and visualises burn rate, session totals, and cost per minute with a live sparkline.
+![BurnWatch](burnwatch.png)
+
+**Real-time Claude token burn rate dashboard.** Know exactly how fast you're spending — before the bill does.
+
+BurnWatch polls `ccusage` and surfaces your active session's burn rate, cost per hour, token velocity, and a live sparkline — all in a clean dark-mode UI that stays out of your way.
+
+---
+
+## Features
+
+- **Live burn rate** — tokens/min and $/hr updated every few seconds
+- **Sparkline chart** — visualise token velocity over time at a glance
+- **Session totals** — input, output, cache creation, and cache read tokens broken down
+- **Cost tracking** — running USD cost for the active session
+- **Threshold alerts** — toast notifications when burn rate spikes
+- **Keyboard-first** — pause, adjust polling speed, and toggle dark mode without touching the mouse
+
+---
 
 ## Prerequisites
 
 - Node.js 18+
-- `ccusage` installed globally:
-  ```bash
-  npm i -g ccusage
-  ```
+- [`ccusage`](https://github.com/ryoppippi/ccusage) installed globally:
+
+```bash
+npm i -g ccusage
+```
+
+---
 
 ## Install
 
 ```bash
-cd dashboard
+git clone https://github.com/your-username/burnwatch.git
+cd burnwatch
 npm install
 ```
 
-## Dev
+---
+
+## Run
 
 ```bash
 npm run dev
 ```
 
-Opens at http://localhost:5173. The Express proxy starts on port 3001 automatically via `concurrently`.
+Opens at **http://localhost:5777**. The Express proxy starts on port **3777** automatically via `concurrently`.
+
+---
 
 ## Build
 
 ```bash
-npm run build   # output in dist/
-npm run preview # serve the build locally
+npm run build    # output in dist/
+npm run preview  # serve the build locally
 ```
 
-## Keyboard shortcuts
+---
+
+## Keyboard Shortcuts
 
 | Key | Action |
 |-----|--------|
@@ -40,9 +67,13 @@ npm run preview # serve the build locally
 | `+` / `-` | Increase / decrease poll interval |
 | `D` | Toggle dark / light mode |
 
-## ccusage JSON shape assumptions
+---
 
-The proxy calls `ccusage blocks --active --json` and expects a response shaped like:
+## How It Works
+
+BurnWatch runs a lightweight Express proxy that shells out to `ccusage blocks --active --json` and normalises the response. The React frontend polls the proxy and renders everything live — no database, no auth, no config.
+
+Expected shape from `ccusage`:
 
 ```json
 {
@@ -67,3 +98,12 @@ The proxy calls `ccusage blocks --active --json` and expects a response shaped l
 ```
 
 If your version of `ccusage` returns a different shape, adjust `normaliseBlock()` in `proxy/server.js`.
+
+---
+
+## Stack
+
+- **React 19** + **Vite 6** — frontend
+- **Recharts** — sparkline visualisation
+- **Express** — local proxy for `ccusage`
+- **react-hot-toast** — burn rate alerts

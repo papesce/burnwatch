@@ -2,8 +2,10 @@ import { execFile } from 'node:child_process'
 import express from 'express'
 import cors from 'cors'
 
+const VITE_ORIGIN = process.env.VITE_ORIGIN ?? 'http://localhost:5777'
+
 const app = express()
-app.use(cors())
+app.use(cors({ origin: VITE_ORIGIN }))
 
 function runCcusage(args) {
   return new Promise((resolve, reject) => {
@@ -54,4 +56,4 @@ app.get('/api/usage', async (req, res) => {
   res.json({ ok: true, ts, block: normaliseBlock(active) })
 })
 
-app.listen(3777, () => console.log('proxy listening on http://localhost:3777'))
+app.listen(3777, '127.0.0.1', () => console.log('proxy listening on http://127.0.0.1:3777'))
