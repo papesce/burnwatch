@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -n proxy,vite -c blue,cyan \"node proxy/server.js\" \"vite\"",
+    "kill": "lsof -ti:3777,5777 | xargs kill -9 2>/dev/null || true",
+    "restart": "npm run kill && npm run dev",
     "build": "vite build",
     "preview": "vite preview"
   },
