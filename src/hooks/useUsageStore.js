@@ -7,6 +7,7 @@ function buildSnapshot(block, ts, latencyMs) {
   return {
     ts,
     latencyMs,
+    sessionId:            block.id,
     costUSD:              block.costUSD,
     totalTokens:          block.totalTokens,
     inputTokens:          block.inputTokens,

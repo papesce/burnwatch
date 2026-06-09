@@ -4,3 +4,4 @@ dist/
 *.local
 plan/
 .playwright-mcp/
+.data/
