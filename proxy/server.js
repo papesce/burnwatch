@@ -1,6 +1,7 @@
 import { execFile, execFileSync } from 'node:child_process'
 import express from 'express'
 import cors from 'cors'
+import { appendSnapshot, readSince, setLabel, detectPlugins, bucketRows } from './store.js'
 
 const VITE_ORIGIN = process.env.VITE_ORIGIN ?? 'http://localhost:5777'
 
@@ -74,7 +75,29 @@ app.get('/api/usage', async (req, res) => {
   const blocks = data.blocks ?? (data.block ? [data.block] : [data])
   const active = blocks.find(b => b.isActive) ?? blocks[0] ?? null
 
-  res.json({ ok: true, ts, block: normaliseBlock(active) })
+  const normalised = normaliseBlock(active)
+  appendSnapshot(normalised, ts)
+  res.json({ ok: true, ts, block: normalised })
+})
+
+const BUCKET_MS = { second: 1_000, minute: 60_000, hour: 3_600_000 }
+
+app.get('/api/history', (req, res) => {
+  const resolution = BUCKET_MS[req.query.resolution] ? req.query.resolution : 'minute'
+  const since      = parseInt(req.query.since) || (Date.now() - 3_600_000)
+  const rows       = readSince(since)
+  const bucketed   = resolution === 'second'
+    ? rows.map(r => ({ ts: r.ts, tokens: r.totalTokens, costUSD: r.costUSD, burnTokMin: r.burnTokMin, burnCostHr: r.burnCostHr, models: r.models }))
+    : bucketRows(rows, BUCKET_MS[resolution])
+  res.json({ ok: true, rows: bucketed, plugins: detectPlugins() })
+})
+
+app.use(express.json())
+app.post('/api/label', (req, res) => {
+  const { sessionId, label } = req.body ?? {}
+  if (!sessionId) return res.status(400).json({ ok: false, error: 'sessionId required' })
+  const ok = setLabel(sessionId, label ?? null)
+  res.json({ ok })
 })
 
 app.listen(3777, '127.0.0.1', () => console.log('proxy listening on http://127.0.0.1:3777'))

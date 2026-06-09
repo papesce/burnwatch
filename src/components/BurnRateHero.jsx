@@ -14,7 +14,7 @@ export default function BurnRateHero({
     <div style={{ display: 'flex', height: '100%', gap: 24 }}>
 
       {/* Left: numbers */}
-      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minWidth: 220 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minWidth: 160 }}>
         <div>
           <div className="label" style={{ marginBottom: 6 }}>burn rate</div>
           {error ? (

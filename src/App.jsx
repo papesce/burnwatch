@@ -6,6 +6,7 @@ import BurnRateHero from './components/BurnRateHero.jsx'
 import SessionTotals from './components/SessionTotals.jsx'
 import DeltaCard from './components/DeltaCard.jsx'
 import StatusBar from './components/StatusBar.jsx'
+import HistoryChart from './components/HistoryChart.jsx'
 
 export default function App() {
   const store = useUsageStore()
@@ -48,7 +49,7 @@ export default function App() {
   }, [togglePause, setIntervalSec, toggleDarkMode])
 
   return (
-    <>
+    <div className="app-shell">
       <Toaster position="top-right" />
       <Banner darkMode={darkMode} onThemeToggle={toggleDarkMode} />
       <div className="app-grid">
@@ -85,7 +86,11 @@ export default function App() {
             onThemeToggle={toggleDarkMode}
           />
         </div>
+
+        <div className="area-history">
+          <HistoryChart sessionId={latest?.sessionId ?? null} />
+        </div>
       </div>
-    </>
+    </div>
   )
 }
