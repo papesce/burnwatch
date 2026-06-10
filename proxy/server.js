@@ -25,8 +25,11 @@ function resolveCcusage() {
 }
 
 const CCUSAGE_BIN = resolveCcusage()
-if (!CCUSAGE_BIN) console.warn('[burnwatch] ccusage not found — install with: npm i -g ccusage')
-else console.log(`[burnwatch] ccusage resolved → ${CCUSAGE_BIN}`)
+if (!CCUSAGE_BIN) {
+  console.error('[burnwatch] ccusage not found — install with: npm i -g ccusage')
+  process.exit(1)
+}
+console.log(`[burnwatch] ccusage resolved → ${CCUSAGE_BIN}`)
 
 function runCcusage(args) {
   if (!CCUSAGE_BIN) return Promise.reject(new Error('ccusage not found'))
@@ -76,7 +79,7 @@ app.get('/api/usage', async (req, res) => {
   const active = blocks.find(b => b.isActive) ?? blocks[0] ?? null
 
   const normalised = normaliseBlock(active)
-  appendSnapshot(normalised, ts)
+  if (normalised) appendSnapshot(normalised, ts)
   res.json({ ok: true, ts, block: normalised })
 })
 
