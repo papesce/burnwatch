@@ -23,8 +23,13 @@ case "$CMD" in
     fi
     echo "Done. Run 'burn open' to start."
     ;;
-  open|dev)
-    echo "==> Starting BurnWatch..."
+  open)
+    echo "==> Starting BurnWatch in background (logs → .burnwatch.log)..."
+    nohup npm run dev --prefix "$PROJECT_DIR" > "$PROJECT_DIR/.burnwatch.log" 2>&1 &
+    echo "PID: $!"
+    ;;
+  dev)
+    echo "==> Starting BurnWatch (foreground)..."
     exec npm run dev --prefix "$PROJECT_DIR"
     ;;
   kill)
@@ -34,7 +39,7 @@ case "$CMD" in
     ;;
   restart)
     "$0" kill
-    "$0" open
+    "$0" dev
     ;;
   build)
     npm run build --prefix "$PROJECT_DIR"
@@ -73,7 +78,8 @@ case "$CMD" in
     echo ""
     echo "Commands:"
     echo "  install       Install all dependencies (npm install + ccusage)"
-    echo "  open|dev      Start the development server"
+    echo "  open          Start the development server (background)"
+    echo "  dev           Start the development server (foreground with logs)"
     echo "  kill          Stop processes on ports 3777 and 5777"
     echo "  restart       Kill then restart"
     echo "  build         Production build"
