@@ -40,6 +40,24 @@ npm install
 
 ---
 
+## Quick Start (burn.sh)
+
+A convenience script is included for common tasks:
+
+```bash
+./burn.sh install    # npm install + ccusage
+./burn.sh open       # start the dev server
+./burn.sh kill       # stop processes on ports 3777/5777
+./burn.sh restart    # kill then restart
+./burn.sh build      # production build
+./burn.sh setup      # symlink to /usr/local/bin/burn (run once)
+./burn.sh uninstall  # remove symlink and node_modules
+```
+
+After running `./burn.sh setup`, you can use `burn install`, `burn open`, etc. from any terminal.
+
+---
+
 ## Run
 
 ```bash
