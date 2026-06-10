@@ -47,8 +47,12 @@ export function useUsageStore() {
       setLatencyMs(ms)
       setLastPollTs(Date.now())
 
-      if (!data.ok || !data.block) {
-        setError(data.error ?? 'No active block')
+      if (!data.ok) {
+        setError(data.error ?? 'ccusage failed')
+        return
+      }
+      if (!data.block) {
+        setError(null)
         return
       }
       setError(null)

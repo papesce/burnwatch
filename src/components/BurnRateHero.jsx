@@ -19,8 +19,8 @@ export default function BurnRateHero({
           <div className="label" style={{ marginBottom: 6 }}>burn rate</div>
           {error ? (
             <div style={{ color: 'var(--accent-danger)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', lineHeight: 1.6 }}>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>ccusage not available</div>
-              <div style={{ opacity: 0.7 }}>npm i -g ccusage</div>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>{error}</div>
+              {error.toLowerCase().includes('ccusage') && <div style={{ opacity: 0.7 }}>npm i -g ccusage</div>}
             </div>
           ) : (
             <>
