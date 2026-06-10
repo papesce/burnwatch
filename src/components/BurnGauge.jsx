@@ -8,12 +8,23 @@ function fmtNum(n) {
   return Math.round(n).toString()
 }
 
-function barColor(tokens, thresholdTokens) {
-  if (thresholdTokens <= 0) return 'var(--accent-cyan)'
-  const ratio = tokens / thresholdTokens
-  if (ratio >= 1.0) return 'var(--accent-danger)'
-  if (ratio >= 0.6) return 'var(--accent-amber)'
-  return 'var(--accent-cyan)'
+const MODEL_COLORS = {
+  haiku:  '#22d3ee', // cyan
+  sonnet: '#a78bfa', // violet
+  opus:   '#fbbf24', // amber-gold
+  fable:  '#f472b6', // pink
+}
+
+function modelColor(models) {
+  const first = (models?.[0] ?? '').toLowerCase()
+  for (const [key, color] of Object.entries(MODEL_COLORS)) {
+    if (first.includes(key)) return color
+  }
+  return '#6b7280' // gray fallback
+}
+
+function barColor(models) {
+  return modelColor(models)
 }
 
 function RollingBars({ rows, threshold, costPerToken, bucketSec, onBarCountChange }) {
@@ -42,7 +53,7 @@ function RollingBars({ rows, threshold, costPerToken, bucketSec, onBarCountChang
   const padTop = 16
   const padBottom = 20
   const padLeft = 4
-  const padRight = 4
+  const padRight = 36 // extra room for cost axis label
 
   const chartH = Math.max(1, height - padTop - padBottom)
 
@@ -62,6 +73,11 @@ function RollingBars({ rows, threshold, costPerToken, bucketSec, onBarCountChang
     const threshLine = thresholdTokens === Infinity ? 0 : thresholdTokens
     return Math.max(dataMax, threshLine) * 1.15 || 1000
   }, [visibleRows, thresholdTokens])
+
+  const maxCost = useMemo(() => {
+    const m = Math.max(...visibleRows.map(r => r.costUSD ?? 0), 0)
+    return m * 1.15 || 0.001
+  }, [visibleRows])
 
   const threshY = thresholdTokens === Infinity
     ? -10
@@ -91,31 +107,45 @@ function RollingBars({ rows, threshold, costPerToken, bucketSec, onBarCountChang
     >
       {width > 0 && height > 0 && (
         <svg width={width} height={height} style={{ display: 'block' }}>
-          {/* Threshold reference line */}
-          {threshY > 0 && threshY < height && (
-            <line
-              x1={padLeft} y1={threshY}
-              x2={width - padRight} y2={threshY}
-              stroke="var(--accent-danger)"
-              strokeWidth={1}
-              strokeDasharray="4 3"
-              opacity={0.6}
-            />
-          )}
-
-          {/* 60% warning line */}
+          {/* Threshold zone backgrounds */}
           {thresholdTokens !== Infinity && (() => {
-            const warnY = padTop + chartH - (thresholdTokens * 0.6 / maxVal) * chartH
-            return warnY > 0 && warnY < height ? (
-              <line
-                x1={padLeft} y1={warnY}
-                x2={width - padRight} y2={warnY}
-                stroke="var(--accent-amber)"
-                strokeWidth={0.5}
-                strokeDasharray="2 4"
-                opacity={0.4}
-              />
-            ) : null
+            const warnY  = padTop + chartH - (thresholdTokens * 0.6 / maxVal) * chartH
+            const chartBottom = padTop + chartH
+            const chartTop    = padTop
+            // green zone: bottom → 60% line
+            // amber zone: 60% line → 100% line
+            // red zone:   100% line → top
+            const greenBottom = chartBottom
+            const greenTop    = Math.max(Math.min(warnY, chartBottom), chartTop)
+            const amberBottom = greenTop
+            const amberTop    = Math.max(Math.min(threshY, chartBottom), chartTop)
+            const redBottom   = amberTop
+            const redTop      = chartTop
+            return (
+              <>
+                {greenTop < greenBottom && (
+                  <rect x={padLeft} y={greenTop} width={width - padLeft - padRight}
+                    height={greenBottom - greenTop} fill="#22c55e" opacity={0.06} />
+                )}
+                {amberTop < amberBottom && (
+                  <rect x={padLeft} y={amberTop} width={width - padLeft - padRight}
+                    height={amberBottom - amberTop} fill="#f59e0b" opacity={0.08} />
+                )}
+                {redBottom > redTop && (
+                  <rect x={padLeft} y={redTop} width={width - padLeft - padRight}
+                    height={redBottom - redTop} fill="#ef4444" opacity={0.1} />
+                )}
+                {/* zone boundary lines */}
+                {warnY > chartTop && warnY < chartBottom && (
+                  <line x1={padLeft} y1={warnY} x2={width - padRight} y2={warnY}
+                    stroke="#f59e0b" strokeWidth={0.5} opacity={0.35} />
+                )}
+                {threshY > chartTop && threshY < chartBottom && (
+                  <line x1={padLeft} y1={threshY} x2={width - padRight} y2={threshY}
+                    stroke="#ef4444" strokeWidth={0.5} opacity={0.45} />
+                )}
+              </>
+            )
           })()}
 
           {/* Bars — fixed width, newest at right edge */}
@@ -132,13 +162,63 @@ function RollingBars({ rows, threshold, costPerToken, bucketSec, onBarCountChang
                 width={BAR_WIDTH}
                 height={barH}
                 rx={1}
-                fill={barColor(row.tokens, thresholdTokens)}
+                fill={barColor(row.models)}
                 opacity={isHovered ? 1 : 0.75}
                 stroke={isHovered ? 'white' : 'none'}
                 strokeWidth={isHovered ? 0.5 : 0}
               />
             )
           })}
+
+          {/* Cost line (right Y-axis) */}
+          {visibleRows.length > 1 && (() => {
+            const points = visibleRows.map((row, i) => {
+              const cx = padLeft + i * (BAR_WIDTH + BAR_GAP) + BAR_WIDTH / 2
+              const cy = padTop + chartH - ((row.costUSD ?? 0) / maxCost) * chartH
+              return `${cx},${cy}`
+            }).join(' ')
+            const lastRow = visibleRows[visibleRows.length - 1]
+            const lastCy = padTop + chartH - ((lastRow?.costUSD ?? 0) / maxCost) * chartH
+            const rightX = width - padRight + 4
+            // right axis ticks
+            const midCost = maxCost / 2
+            const midY = padTop + chartH * 0.5
+            const topY = padTop
+            const fmtCost = v => v < 0.001 ? v.toFixed(6) : v < 0.01 ? v.toFixed(5) : v.toFixed(4)
+            return (
+              <>
+                <polyline
+                  points={points}
+                  fill="none"
+                  stroke="#34d399"
+                  strokeWidth={1.5}
+                  strokeLinejoin="round"
+                  opacity={0.85}
+                />
+                {/* dots at each point */}
+                {visibleRows.map((row, i) => {
+                  const cx = padLeft + i * (BAR_WIDTH + BAR_GAP) + BAR_WIDTH / 2
+                  const cy = padTop + chartH - ((row.costUSD ?? 0) / maxCost) * chartH
+                  return (
+                    <circle key={i} cx={cx} cy={cy} r={i === hoverIdx ? 3 : 1.5}
+                      fill="#34d399" opacity={i === hoverIdx ? 1 : 0.7} />
+                  )
+                })}
+                {/* right axis line */}
+                <line x1={width - padRight + 2} y1={padTop} x2={width - padRight + 2} y2={padTop + chartH}
+                  stroke="rgba(52,211,153,0.25)" strokeWidth={0.5} />
+                {/* top tick = maxCost */}
+                <text x={rightX} y={topY + 4} fontSize={8} fontFamily="var(--font-mono)"
+                  fill="#34d399" opacity={0.7}>${fmtCost(maxCost / 1.15)}</text>
+                {/* mid tick */}
+                <text x={rightX} y={midY + 4} fontSize={8} fontFamily="var(--font-mono)"
+                  fill="#34d399" opacity={0.5}>${fmtCost(midCost / 1.15)}</text>
+                {/* label */}
+                <text x={rightX} y={padTop + chartH + 12} fontSize={8} fontFamily="var(--font-mono)"
+                  fill="#34d399" opacity={0.5}>$</text>
+              </>
+            )
+          })()}
 
           {/* Threshold label */}
           {threshY > 10 && threshY < height - 10 && (
@@ -176,15 +256,18 @@ function RollingBars({ rows, threshold, costPerToken, bucketSec, onBarCountChang
           <div style={{ color: 'var(--text-muted)', marginBottom: 4 }}>
             {new Date(visibleRows[hoverIdx].ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
           </div>
-          <div style={{ color: 'var(--accent-cyan)' }}>
-            {fmtNum(visibleRows[hoverIdx].tokens)} tok
-          </div>
-          <div style={{ color: 'var(--accent-amber)' }}>
-            ${visibleRows[hoverIdx].costUSD?.toFixed(5) ?? '0'} cost
+          <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
+            <span style={{ color: 'var(--accent-cyan)' }}>{fmtNum(visibleRows[hoverIdx].tokens)} tok</span>
+            <span style={{ color: '#34d399' }}>${visibleRows[hoverIdx].costUSD?.toFixed(5) ?? '0'}</span>
           </div>
           {visibleRows[hoverIdx].models?.length > 0 && (
-            <div style={{ color: 'var(--text-muted)', marginTop: 4, fontSize: '0.62rem' }}>
-              {visibleRows[hoverIdx].models.join(', ')}
+            <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {visibleRows[hoverIdx].models.map(m => (
+                <div key={m} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.62rem' }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: modelColor([m]), flexShrink: 0 }} />
+                  <span style={{ color: 'var(--text-muted)' }}>{m}</span>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -265,7 +348,6 @@ export default function BurnGauge() {
       <div className="glass-card" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: 'var(--accent-danger)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', textAlign: 'center' }}>
           <div style={{ fontWeight: 600, marginBottom: 4 }}>{error}</div>
-          {error.toLowerCase().includes('ccusage') && <div style={{ opacity: 0.7 }}>npm i -g ccusage</div>}
         </div>
       </div>
     )
@@ -360,7 +442,7 @@ export default function BurnGauge() {
       </div>
 
       {/* Rolling bar chart */}
-      <div style={{ flex: 1, minHeight: 80 }}>
+      <div style={{ flex: 1, minHeight: 0 }}>
         {histError ? (
           <div style={{ color: 'var(--accent-danger)', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', textAlign: 'center', paddingTop: 30 }}>
             {histError}
