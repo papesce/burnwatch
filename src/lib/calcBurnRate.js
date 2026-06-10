@@ -2,6 +2,15 @@ export function calcBurnRate(snapshots) {
   const now = Date.now()
   const windowMs = 60_000
 
+  // If the last two snapshots have identical totals, activity has stopped — go idle immediately.
+  if (snapshots.length >= 2) {
+    const last = snapshots[snapshots.length - 1]
+    const prev = snapshots[snapshots.length - 2]
+    if (last.totalTokens === prev.totalTokens) {
+      return { tokensPerSec: 0, costPerMin: 0, costPerHour: 0 }
+    }
+  }
+
   const window = snapshots.filter(s => now - s.ts <= windowMs)
   if (window.length < 2) return { tokensPerSec: 0, costPerMin: 0, costPerHour: 0 }
 

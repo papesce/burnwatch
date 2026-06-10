@@ -1,54 +1,60 @@
 import { useState, useEffect, useCallback } from 'react'
 
-const RESOLUTIONS = ['second', 'minute', 'hour']
-const SINCE_PRESETS = {
-  '15m': 15 * 60 * 1000,
-  '1h':  60 * 60 * 1000,
-  '6h':  6  * 60 * 60 * 1000,
-  '24h': 24 * 60 * 60 * 1000,
+const RANGES = ['1m', '5m', '15m', '1h', '6h', '24h']
+
+function parseBucketMs(resolution) {
+  const n = parseInt(resolution)
+  if (resolution.endsWith('s')) return n * 1000
+  if (resolution.endsWith('m')) return n * 60 * 1000
+  return 10_000
+}
+
+const RANGE_CONFIG = {
+  '1m':  { sinceMs: 60_000,        resolution: '2s',  pollMs: 5_000  },
+  '5m':  { sinceMs: 300_000,       resolution: '10s', pollMs: 5_000  },
+  '15m': { sinceMs: 900_000,       resolution: '30s', pollMs: 15_000 },
+  '1h':  { sinceMs: 3_600_000,     resolution: '2m',  pollMs: 30_000 },
+  '6h':  { sinceMs: 21_600_000,    resolution: '12m', pollMs: 30_000 },
+  '24h': { sinceMs: 86_400_000,    resolution: '48m', pollMs: 60_000 },
 }
 
 export function useHistoryStore() {
-  const [rows,       setRows]       = useState([])
-  const [plugins,    setPlugins]    = useState([])
-  const [resolution, setResolution] = useState('minute')
-  const [sincePreset, setSincePreset] = useState('1h')
-  const [loading,    setLoading]    = useState(false)
-  const [error,      setError]      = useState(null)
+  const [rows,     setRows]     = useState([])
+  const [range,    setRange]    = useState('5m')
+  const [barCount, setBarCount] = useState(60)
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState(null)
 
-  const sinceMs = Date.now() - (SINCE_PRESETS[sincePreset] ?? SINCE_PRESETS['1h'])
+  const config = RANGE_CONFIG[range] ?? RANGE_CONFIG['5m']
 
-  const fetch_ = useCallback(async () => {
+  const fetchHistory = useCallback(async () => {
     setLoading(true)
     try {
-      const since = Date.now() - (SINCE_PRESETS[sincePreset] ?? SINCE_PRESETS['1h'])
-      const res  = await fetch(`/api/history?resolution=${resolution}&since=${since}`)
+      const bucketMs = parseBucketMs(config.resolution)
+      const sinceMs  = Date.now() - barCount * bucketMs
+      const res = await fetch(`/api/history?resolution=${config.resolution}&since=${sinceMs}`)
       const data = await res.json()
       if (!data.ok) throw new Error(data.error ?? 'history fetch failed')
       setRows(data.rows)
-      setPlugins(data.plugins ?? [])
       setError(null)
     } catch (e) {
       setError(e.message)
     } finally {
       setLoading(false)
     }
-  }, [resolution, sincePreset])
+  }, [config.resolution, barCount])
 
-  // Fetch on mount and whenever resolution/range changes
-  useEffect(() => { fetch_() }, [fetch_])
+  useEffect(() => { fetchHistory() }, [fetchHistory])
 
-  // Background re-fetch every 30s
   useEffect(() => {
-    const id = setInterval(fetch_, 30_000)
+    const id = setInterval(fetchHistory, config.pollMs)
     return () => clearInterval(id)
-  }, [fetch_])
+  }, [fetchHistory, config.pollMs])
 
   return {
-    rows, plugins, resolution, sincePreset, loading, error,
-    setResolution, setSincePreset,
-    resolutions: RESOLUTIONS,
-    sincePresets: Object.keys(SINCE_PRESETS),
-    refetch: fetch_,
+    rows, range, loading, error,
+    setRange, setBarCount,
+    ranges: RANGES,
+    refetch: fetchHistory,
   }
 }

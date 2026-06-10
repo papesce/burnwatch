@@ -6,7 +6,7 @@ import BurnRateHero from './components/BurnRateHero.jsx'
 import SessionTotals from './components/SessionTotals.jsx'
 import DeltaCard from './components/DeltaCard.jsx'
 import StatusBar from './components/StatusBar.jsx'
-import HistoryChart from './components/HistoryChart.jsx'
+import BurnGauge from './components/BurnGauge.jsx'
 
 export default function App() {
   const store = useUsageStore()
@@ -88,7 +88,7 @@ export default function App() {
         </div>
 
         <div className="area-history">
-          <HistoryChart sessionId={latest?.sessionId ?? null} />
+          <BurnGauge />
         </div>
       </div>
     </div>

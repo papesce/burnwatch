@@ -77,8 +77,11 @@ export function detectPlugins() {
 
 // Groups raw rows into time buckets. Returns one point per bucket with
 // delta tokens/cost (consumed within the window) and avg burn rates.
-export function bucketRows(rows, bucketMs) {
-  if (!rows.length) return []
+// Empty buckets within [sinceMs, now] are filled with zero values so the
+// chart has a continuous time axis.
+export function bucketRows(rows, bucketMs, sinceMs) {
+  const now = Date.now()
+  const windowStart = sinceMs ?? (rows.length ? rows[0].ts : now - bucketMs)
 
   // Group rows into buckets keyed by bucket-start timestamp
   const map = new Map()
@@ -88,19 +91,29 @@ export function bucketRows(rows, bucketMs) {
     map.get(key).push(r)
   }
 
+  // Fill every bucket slot from windowStart to now
+  const firstSlot = Math.floor(windowStart / bucketMs) * bucketMs
+  const lastSlot  = Math.floor(now / bucketMs) * bucketMs
+  for (let ts = firstSlot; ts <= lastSlot; ts += bucketMs) {
+    if (!map.has(ts)) map.set(ts, [])
+  }
+
   const buckets = []
   for (const [ts, group] of [...map.entries()].sort((a, b) => a[0] - b[0])) {
+    if (!group.length) {
+      buckets.push({ ts, tokens: 0, costUSD: 0, burnTokMin: 0, burnCostHr: 0, models: [] })
+      continue
+    }
+
     const first = group[0]
     const last  = group[group.length - 1]
 
-    // delta: tokens/cost consumed within this bucket (not cumulative total)
     const tokens  = Math.max(0, last.totalTokens - first.totalTokens)
     const costUSD = Math.max(0, last.costUSD - first.costUSD)
 
     const burnTokMin = group.reduce((s, r) => s + r.burnTokMin, 0) / group.length
     const burnCostHr = group.reduce((s, r) => s + r.burnCostHr, 0) / group.length
 
-    // Collect unique models seen in this bucket
     const modelSet = new Set(group.flatMap(r => r.models))
 
     buckets.push({ ts, tokens, costUSD, burnTokMin, burnCostHr, models: [...modelSet] })

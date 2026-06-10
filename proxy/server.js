@@ -83,15 +83,13 @@ app.get('/api/usage', async (req, res) => {
   res.json({ ok: true, ts, block: normalised })
 })
 
-const BUCKET_MS = { second: 1_000, minute: 60_000, hour: 3_600_000 }
+const BUCKET_MS = { '2s': 2_000, '5s': 5_000, '10s': 10_000, '30s': 30_000, '1m': 60_000, '2m': 120_000, '5m': 300_000, '12m': 720_000, '48m': 2_880_000, '1h': 3_600_000 }
 
 app.get('/api/history', (req, res) => {
-  const resolution = BUCKET_MS[req.query.resolution] ? req.query.resolution : 'minute'
+  const resolution = BUCKET_MS[req.query.resolution] ? req.query.resolution : '1m'
   const since      = parseInt(req.query.since) || (Date.now() - 3_600_000)
   const rows       = readSince(since)
-  const bucketed   = resolution === 'second'
-    ? rows.map(r => ({ ts: r.ts, tokens: r.totalTokens, costUSD: r.costUSD, burnTokMin: r.burnTokMin, burnCostHr: r.burnCostHr, models: r.models }))
-    : bucketRows(rows, BUCKET_MS[resolution])
+  const bucketed   = bucketRows(rows, BUCKET_MS[resolution], since)
   res.json({ ok: true, rows: bucketed, plugins: detectPlugins() })
 })
 

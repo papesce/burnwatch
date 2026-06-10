@@ -202,7 +202,7 @@ body::before {
 .area-totals  { grid-area: totals; }
 .area-delta   { grid-area: delta; }
 .area-status  { grid-area: status; }
-.area-history { grid-area: history; min-height: 0; }
+.area-history { grid-area: history; min-height: 180px; }
 
 @media (max-width: 768px) {
   .app-grid {
