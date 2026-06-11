@@ -1,0 +1,9 @@
+{
+  "_comment": "Copy this file to pricing.json and fill in your enterprise per-token rates.",
+  "_comment2": "Keys are model id prefixes — longest match wins. Values are per-token in USD.",
+  "_comment3": "cacheWrite = 5-minute cache write rate. Remove any models you don't need to override.",
+
+  "claude-opus-4":   { "input": 0.000005,  "output": 0.000025,  "cacheWrite": 0.000006,  "cacheRead": 0.0000005 },
+  "claude-sonnet-4": { "input": 0.000003,  "output": 0.000015,  "cacheWrite": 0.000003,  "cacheRead": 0.0000003 },
+  "claude-haiku-4":  { "input": 0.000001,  "output": 0.000005,  "cacheWrite": 0.00000125,"cacheRead": 0.0000001 }
+}

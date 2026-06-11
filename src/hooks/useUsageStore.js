@@ -48,7 +48,7 @@ export function useUsageStore() {
       setLastPollTs(Date.now())
 
       if (!data.ok) {
-        setError(data.error ?? 'ccusage failed')
+        setError(data.error ?? 'failed to read usage data')
         return
       }
       if (!data.block) {

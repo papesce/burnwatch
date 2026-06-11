@@ -35,6 +35,7 @@ function modelFamily(id = '') {
   if (id.includes('opus'))   return 'opus'
   if (id.includes('sonnet')) return 'sonnet'
   if (id.includes('haiku'))  return 'haiku'
+  if (id.includes('fable'))  return 'fable'
   return 'unknown'
 }
 

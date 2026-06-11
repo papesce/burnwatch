@@ -1,0 +1,17 @@
+
+> burnwatch@0.1.0 dev
+> concurrently -n proxy,vite -c blue,cyan "node proxy/server.js" "vite"
+
+[proxy] [burnwatch] proxy listening on http://127.0.0.1:3777
+[vite] 
+[vite]   VITE v6.4.3  ready in 186 ms
+[vite] 
+[vite]   ➜  Local:   http://localhost:5777/
+[vite]   ➜  Network: use --host to expose
+[proxy] node proxy/server.js exited with code SIGKILL
+[vite] vite exited with code SIGKILL
+npm notice
+npm notice New minor version of npm available! 11.12.1 -> 11.16.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.16.0
+npm notice To update run: npm install -g npm@11.16.0
+npm notice

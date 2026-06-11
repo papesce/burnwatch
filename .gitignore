@@ -5,3 +5,4 @@ dist/
 plan/
 .playwright-mcp/
 .data/
+proxy/pricing.json

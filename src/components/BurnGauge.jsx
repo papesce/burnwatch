@@ -276,15 +276,20 @@ function RollingBars({ rows, threshold, costPerToken, bucketSec, onBarCountChang
   )
 }
 
-function gaugeColor(costPerMin, threshold) {
-  if (costPerMin >= threshold) return 'var(--accent-danger)'
-  if (costPerMin >= threshold * 0.6) return 'var(--accent-amber)'
-  return 'var(--accent-cyan)'
+
+const RANGE_DESC = {
+  '1m':  'last 1 min · 2s buckets',
+  '5m':  'last 5 min · 10s buckets',
+  '15m': 'last 15 min · 30s buckets',
+  '1h':  'last 1 hr · 2m buckets',
+  '6h':  'last 6 hr · 12m buckets',
+  '24h': 'last 24 hr · 48m buckets',
 }
 
 export default function BurnGauge() {
-  const { snapshots, delta, interval, threshold, error } = useUsageStore()
-  const { rows, range, loading, error: histError, setRange, setBarCount, ranges } = useHistoryStore()
+  const { snapshots, threshold, error } = useUsageStore()
+  const [chartFrozen, setChartFrozen] = useState(false)
+  const { rows, range, loading, error: histError, setRange, setBarCount, ranges } = useHistoryStore(chartFrozen)
 
   const [label, setLabel] = useState('')
   const [labelSaved, setLabelSaved] = useState(false)
@@ -313,25 +318,6 @@ export default function BurnGauge() {
     setTimeout(() => setLabelSaved(false), 2000)
   }
 
-  const tokPerInterval = delta?.tokens ?? 0
-  const costPerInterval = delta?.cost ?? 0
-  const costPerMin = interval > 0 ? (costPerInterval / interval) * 60 : 0
-  const isIdle = tokPerInterval === 0
-
-  const color = isIdle ? 'var(--text-muted)' : gaugeColor(costPerMin, threshold)
-
-  const barMax = useMemo(() => {
-    const recent = snapshots.slice(-30)
-    if (recent.length < 2) return 1000
-    const deltas = []
-    for (let i = 1; i < recent.length; i++) {
-      deltas.push(Math.max(0, recent[i].totalTokens - recent[i - 1].totalTokens))
-    }
-    return Math.max(Math.max(...deltas) * 1.2, 1000)
-  }, [snapshots])
-
-  const barPct = Math.min(tokPerInterval / barMax, 1)
-
   const btnBase = {
     fontFamily: 'var(--font-mono)',
     fontSize: '0.65rem',
@@ -355,74 +341,12 @@ export default function BurnGauge() {
 
   return (
     <div className="glass-card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
-
-        {/* Live burn header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span className="label">live burn</span>
-          {isIdle && <span className="label" style={{ color: 'var(--text-muted)' }}>idle</span>}
-          <span style={{ flex: 1 }} />
-          {costPerMin >= threshold && (
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--accent-danger)', fontWeight: 600 }}>
-              OVER THRESHOLD
-            </span>
-          )}
-        </div>
-
-        {/* Big number + cost */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
-          <span style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 'clamp(2.2rem, 4.5vw, 3.5rem)',
-            fontWeight: 700,
-            color,
-            lineHeight: 1,
-            transition: 'color 0.3s',
-          }}>
-            {isIdle ? '—' : fmtNum(tokPerInterval)}
-          </span>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            tok/{interval}s
-          </span>
-          <span style={{ flex: 1 }} />
-          <span style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 'clamp(0.9rem, 1.8vw, 1.3rem)',
-            fontWeight: 600,
-            color: isIdle ? 'var(--text-muted)' : 'var(--accent-amber)',
-            lineHeight: 1,
-            transition: 'color 0.3s',
-          }}>
-            {isIdle ? '—' : `$${costPerInterval.toFixed(5)}`}
-          </span>
-        </div>
-
-        {/* Live bar */}
-        <div style={{ height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-          <div style={{
-            height: '100%',
-            width: `${barPct * 100}%`,
-            borderRadius: 3,
-            background: color,
-            transition: 'width 0.3s, background 0.3s',
-            opacity: isIdle ? 0.2 : 0.8,
-          }} />
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span className="mono muted" style={{ fontSize: '0.58rem' }}>
-            {isIdle ? '0 tok' : `0 — ${fmtNum(barMax)} tok`}
-          </span>
-          <span className="mono muted" style={{ fontSize: '0.58rem' }}>
-            ~${costPerMin.toFixed(4)}/min
-          </span>
-        </div>
-      </div>
-
       {/* Divider + range picker */}
       <div style={{ borderTop: '1px solid var(--card-border)', margin: '8px 0 6px', paddingTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
         <span className="label">history</span>
+        <span className="mono muted" style={{ fontSize: '0.58rem' }}>{RANGE_DESC[range]}</span>
         {loading && <span className="muted" style={{ fontSize: '0.6rem' }}>...</span>}
+        {chartFrozen && <span className="mono" style={{ fontSize: '0.6rem', color: 'var(--accent-amber)' }}>hover-freeze</span>}
         <span style={{ flex: 1 }} />
         <div style={{ display: 'flex', gap: 3 }}>
           {ranges.map(r => {
@@ -442,7 +366,11 @@ export default function BurnGauge() {
       </div>
 
       {/* Rolling bar chart */}
-      <div style={{ flex: 1, minHeight: 0 }}>
+      <div
+        style={{ flex: 1, minHeight: 0 }}
+        onMouseEnter={() => setChartFrozen(true)}
+        onMouseLeave={() => setChartFrozen(false)}
+      >
         {histError ? (
           <div style={{ color: 'var(--accent-danger)', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', textAlign: 'center', paddingTop: 30 }}>
             {histError}

@@ -95,6 +95,29 @@ body::before {
   }
 }
 
+/* ── Flame background ─────────────────────────────────────── */
+.burn-flame {
+  position: relative;
+  overflow: hidden;
+}
+
+.burn-flame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 100%, rgba(255,107,53,calc(var(--flame-opacity,0)*0.35)) 0%, rgba(255,77,109,calc(var(--flame-opacity,0)*0.25)) 35%, transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+  transition: background 0.5s ease;
+  animation: flameFlicker 3s ease-in-out infinite;
+}
+
+@keyframes flameFlicker {
+  0%, 100% { opacity: 0.7; transform: scaleY(1); }
+  33%      { opacity: 1;   transform: scaleY(1.04); }
+  66%      { opacity: 0.85; transform: scaleY(0.98); }
+}
+
 /* ── Banner ────────────────────────────────────────────────── */
 .bw-banner {
   display: flex;
@@ -183,50 +206,32 @@ body::before {
 .app-grid {
   display: grid;
   grid-template-areas:
-    "burn    totals  delta"
-    "burn    totals  delta"
-    "status  status  status"
-    "history history history";
-  grid-template-columns: 2fr 1fr 1fr;
-  grid-template-rows: 1fr auto 52px minmax(0, 1fr);
+    "burn    totals"
+    "history history";
+  grid-template-columns: 1.3fr 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 10px;
   padding: 10px;
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
   position: relative;
   z-index: 1;
 }
 
 .area-burn    { grid-area: burn; }
 .area-totals  { grid-area: totals; }
-.area-delta   { grid-area: delta; }
-.area-status  { grid-area: status; }
-.area-history { grid-area: history; min-height: 180px; }
+.area-history { grid-area: history; min-height: 0; }
 
-@media (max-width: 768px) {
-  .app-grid {
-    grid-template-areas:
-      "burn    burn"
-      "totals  delta"
-      "status  status"
-      "history history";
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto 52px minmax(0, 1fr);
-    overflow-y: auto;
-  }
-}
-
-@media (max-width: 480px) {
+@media (max-width: 640px) {
   .app-grid {
     grid-template-areas:
       "burn"
       "totals"
-      "delta"
-      "status"
       "history";
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto 52px minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    overflow: hidden;
   }
 }
 
@@ -282,9 +287,10 @@ body::before {
   opacity: 0.85;
 }
 
-.model-badge--opus   { color: #b388ff; }
-.model-badge--sonnet { color: var(--accent-cyan); }
-.model-badge--haiku  { color: #69ff47; }
+.model-badge--opus   { color: #fbbf24; }
+.model-badge--sonnet { color: #a78bfa; }
+.model-badge--haiku  { color: #22d3ee; }
+.model-badge--fable  { color: #f472b6; }
 .model-badge--unknown { color: var(--text-muted); }
 
 /* ── Pulse dot (live indicator) ────────────────────────────── */
@@ -304,14 +310,44 @@ body::before {
   50%       { opacity: 0.4; transform: scale(0.7); }
 }
 
+/* ── Flame background ──────────────────────────────────────── */
+.burn-flame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 110%,
+    rgba(255, 100, 10, 0.55) 0%,
+    rgba(255, 60, 10, 0.35) 30%,
+    rgba(255, 0, 60, 0.15) 60%,
+    transparent 80%
+  );
+  opacity: var(--flame-opacity, 0);
+  transition: opacity 1.5s ease;
+  animation: flameFlicker 2.5s ease-in-out infinite;
+  z-index: 0;
+}
+
+.burn-flame > * { position: relative; z-index: 1; }
+
+@keyframes flameFlicker {
+  0%, 100% { transform: scaleY(1)    scaleX(1);    opacity: calc(var(--flame-opacity, 0) * 1.0); }
+  25%       { transform: scaleY(1.04) scaleX(0.98); opacity: calc(var(--flame-opacity, 0) * 0.8); }
+  50%       { transform: scaleY(0.97) scaleX(1.02); opacity: calc(var(--flame-opacity, 0) * 1.1); }
+  75%       { transform: scaleY(1.03) scaleX(0.99); opacity: calc(var(--flame-opacity, 0) * 0.9); }
+}
+
 /* ── History card ──────────────────────────────────────────── */
-.area-history .glass-card {
+.area-history {
+  overflow: hidden;
   height: 100%;
   display: flex;
   flex-direction: column;
 }
 
-.area-history .glass-card > div:last-child {
+.area-history > * {
   flex: 1;
   min-height: 0;
 }
