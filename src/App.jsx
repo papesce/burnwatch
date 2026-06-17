@@ -4,20 +4,16 @@ import { useUsageStore } from './hooks/useUsageStore.js'
 import Banner from './components/Banner.jsx'
 import BurnRateHero from './components/BurnRateHero.jsx'
 import SessionTotals from './components/SessionTotals.jsx'
-import DeltaCard from './components/DeltaCard.jsx'
-import StatusBar from './components/StatusBar.jsx'
 import BurnGauge from './components/BurnGauge.jsx'
 
 export default function App() {
   const store = useUsageStore()
   const {
-    latest, delta, burnRate, sparklineData, modelSwitchPoints,
-    isIdle, isOverThreshold, error,
-    interval, paused, threshold, latencyMs, lastPollTs, darkMode,
+    latest, delta, burnRate, isIdle, isOverThreshold, error,
+    interval, paused, threshold, darkMode,
     setIntervalSec, togglePause, setThreshold, toggleDarkMode,
   } = store
 
-  // Threshold alert — fire toast once per crossing, not on every render
   const wasOverRef = useRef(false)
   useEffect(() => {
     if (isOverThreshold && !wasOverRef.current) {
@@ -35,7 +31,6 @@ export default function App() {
     wasOverRef.current = isOverThreshold
   }, [isOverThreshold, threshold])
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e) => {
       if (e.target.tagName === 'INPUT') return
@@ -51,40 +46,30 @@ export default function App() {
   return (
     <div className="app-shell">
       <Toaster position="top-right" />
-      <Banner darkMode={darkMode} onThemeToggle={toggleDarkMode} />
+      <Banner
+        darkMode={darkMode}
+        onThemeToggle={toggleDarkMode}
+        paused={paused}
+        onPause={togglePause}
+        interval={interval}
+        onIntervalChange={setIntervalSec}
+      />
       <div className="app-grid">
         <div className={`glass-card area-burn${isOverThreshold ? ' glass-card--alert' : ''}`}>
           <BurnRateHero
             burnRate={burnRate}
-            sparklineData={sparklineData}
-            modelSwitchPoints={modelSwitchPoints}
             isIdle={isIdle}
             isOverThreshold={isOverThreshold}
             threshold={threshold}
             onThresholdChange={setThreshold}
             error={error}
+            delta={delta}
+            interval={interval}
           />
         </div>
 
         <div className="glass-card area-totals">
           <SessionTotals latest={latest} />
-        </div>
-
-        <div className="glass-card area-delta">
-          <DeltaCard delta={delta} interval={interval} />
-        </div>
-
-        <div className="glass-card area-status">
-          <StatusBar
-            lastPollTs={lastPollTs}
-            interval={interval}
-            latencyMs={latencyMs}
-            paused={paused}
-            darkMode={darkMode}
-            onPause={togglePause}
-            onIntervalChange={setIntervalSec}
-            onThemeToggle={toggleDarkMode}
-          />
         </div>
 
         <div className="area-history">

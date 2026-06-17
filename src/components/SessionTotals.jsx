@@ -88,11 +88,9 @@ export default function SessionTotals({ latest }) {
 
       {/* Token breakdown */}
       <div style={{ flex: 1 }}>
-        <TokenRow label="input"        value={latest.inputTokens} />
-        <TokenRow label="output"       value={latest.outputTokens} color="var(--accent-cyan)" />
-        <TokenRow label="cache write"  value={latest.cacheCreationTokens} color="var(--text-muted)" />
-        <TokenRow label="cache read"   value={latest.cacheReadTokens} color="var(--text-muted)" />
-        <div style={{ borderTop: '1px solid var(--card-border)', marginTop: 8, paddingTop: 8 }}>
+        <TokenRow label="input"  value={latest.inputTokens} />
+        <TokenRow label="output" value={latest.outputTokens} color="var(--accent-cyan)" />
+        <div style={{ borderTop: '1px solid var(--card-border)', marginTop: 6, paddingTop: 6 }}>
           <TokenRow label="total" value={latest.totalTokens} color="var(--text-primary)" />
         </div>
       </div>

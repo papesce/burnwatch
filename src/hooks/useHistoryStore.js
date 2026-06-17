@@ -18,7 +18,7 @@ const RANGE_CONFIG = {
   '24h': { sinceMs: 86_400_000,    resolution: '48m', pollMs: 60_000 },
 }
 
-export function useHistoryStore() {
+export function useHistoryStore(frozen) {
   const [rows,     setRows]     = useState([])
   const [range,    setRange]    = useState('5m')
   const [barCount, setBarCount] = useState(60)
@@ -47,9 +47,10 @@ export function useHistoryStore() {
   useEffect(() => { fetchHistory() }, [fetchHistory])
 
   useEffect(() => {
+    if (frozen) return
     const id = setInterval(fetchHistory, config.pollMs)
     return () => clearInterval(id)
-  }, [fetchHistory, config.pollMs])
+  }, [fetchHistory, config.pollMs, frozen])
 
   return {
     rows, range, loading, error,

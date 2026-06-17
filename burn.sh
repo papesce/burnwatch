@@ -11,6 +11,12 @@ done
 PROJECT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 CMD="${1:-help}"
 
+# Resolve nvm-managed node into PATH so nohup/background runs can find it
+if [ -n "${NVM_DIR:-}" ] && [ -s "$NVM_DIR/nvm.sh" ]; then
+  NODE_BIN="$(ls "$NVM_DIR/versions/node"/*/bin/node 2>/dev/null | sort -V | tail -1 | xargs dirname 2>/dev/null || true)"
+  [ -n "$NODE_BIN" ] && export PATH="$NODE_BIN:$PATH"
+fi
+
 case "$CMD" in
   install)
     echo "==> Installing BurnWatch dependencies..."
