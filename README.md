@@ -1,8 +1,9 @@
 # BurnWatch
 
-![BurnWatch](burnwatch.png)
-
 **Real-time Claude token burn rate dashboard.** Know exactly how fast you're spending — before the bill does.
+
+<img width="922" height="948" alt="Screenshot 2026-06-20 at 3 01 16 PM" src="https://github.com/user-attachments/assets/672fa0f7-5c6a-46d0-8d4a-d007b95e37c9" />
+
 
 BurnWatch polls `ccusage` and surfaces your active session's burn rate, cost per hour, token velocity, and a live sparkline — all in a clean dark-mode UI that stays out of your way.
 
