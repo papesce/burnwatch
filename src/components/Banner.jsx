@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import Logo from './Logo.jsx'
 
-export default function Banner({ darkMode, onThemeToggle, paused, onPause, interval, onIntervalChange }) {
+const RANGES = ['1m', '5m', '15m', '1h', '6h', '24h']
+
+export default function Banner({ darkMode, onThemeToggle, paused, onPause, interval, onIntervalChange, range, onRangeChange }) {
   const [showSettings, setShowSettings] = useState(false)
   const settingsRef = useRef(null)
 
@@ -26,6 +28,27 @@ export default function Banner({ darkMode, onThemeToggle, paused, onPause, inter
           <span className="bw-banner__watch">watch</span>
           <span className="bw-banner__tag">Claude usage monitor</span>
         </div>
+      </div>
+
+      <div className="bw-banner__center">
+        {RANGES.map(r => {
+          const active = r === range
+          return (
+            <button key={r} onClick={() => onRangeChange?.(r)} style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '0.65rem',
+              letterSpacing: '0.06em',
+              padding: '3px 10px',
+              borderRadius: 999,
+              border: '1px solid',
+              cursor: 'pointer',
+              transition: 'background 0.15s, color 0.15s',
+              background: active ? 'rgba(0,229,255,0.15)' : 'transparent',
+              borderColor: active ? 'rgba(0,229,255,0.5)' : 'rgba(255,255,255,0.12)',
+              color: active ? 'var(--accent-cyan)' : 'var(--text-muted)',
+            }}>{r}</button>
+          )
+        })}
       </div>
 
       <div className="bw-banner__right">

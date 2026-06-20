@@ -5,8 +5,5 @@ dist/
 plan/
 .playwright-mcp/
 .data/
-<<<<<<< Updated upstream
 proxy/pricing.json
-=======
-.burnwatch.log
->>>>>>> Stashed changes
+*.log

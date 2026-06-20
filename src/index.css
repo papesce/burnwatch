@@ -181,6 +181,15 @@ body::before {
   align-self: center;
 }
 
+.bw-banner__center {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 .bw-banner__right {
   display: flex;
   align-items: center;
@@ -206,32 +215,40 @@ body::before {
 .app-grid {
   display: grid;
   grid-template-areas:
-    "burn    totals"
-    "history history";
-  grid-template-columns: 1.3fr 1fr;
-  grid-template-rows: auto minmax(0, 1fr);
+    "burn  totals  estimates"
+    "burn  totals  period-totals"
+    "history history history"
+    "projects projects projects";
+  grid-template-columns: 1.3fr 1fr 1fr;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 10px;
   padding: 10px;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
   position: relative;
   z-index: 1;
 }
 
-.area-burn    { grid-area: burn; }
-.area-totals  { grid-area: totals; }
-.area-history { grid-area: history; min-height: 0; }
+.area-burn          { grid-area: burn; }
+.area-totals        { grid-area: totals; }
+.area-estimates     { grid-area: estimates; }
+.area-period-totals { grid-area: period-totals; }
+.area-history       { grid-area: history; min-height: 0; }
+.area-projects      { grid-area: projects; }
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .app-grid {
     grid-template-areas:
       "burn"
       "totals"
-      "history";
+      "estimates"
+      "period-totals"
+      "history"
+      "projects";
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto minmax(0, 1fr);
-    overflow: hidden;
+    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+    overflow: auto;
   }
 }
 

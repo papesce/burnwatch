@@ -286,19 +286,12 @@ const RANGE_DESC = {
   '24h': 'last 24 hr · 48m buckets',
 }
 
-export default function BurnGauge() {
-  const { snapshots, threshold, error } = useUsageStore()
+export default function BurnGauge({ threshold, range: rangeProp }) {
+  const { snapshots, error } = useUsageStore()
   const [chartFrozen, setChartFrozen] = useState(false)
-  const { rows, range, loading, error: histError, setRange, setBarCount, ranges } = useHistoryStore(chartFrozen)
-
-  const [label, setLabel] = useState('')
-  const [labelSaved, setLabelSaved] = useState(false)
-  const labelRef = useRef(label)
-  labelRef.current = label
+  const { rows, range, loading, error: histError, setBarCount } = useHistoryStore(chartFrozen, rangeProp)
 
   const latestSnapshot = useMemo(() => snapshots[snapshots.length - 1] ?? null, [snapshots])
-  const sessionId = latestSnapshot?.sessionId ?? null
-
   const costPerToken = useMemo(() => {
     if (!latestSnapshot || latestSnapshot.totalTokens === 0) return 0.00001
     return latestSnapshot.costUSD / latestSnapshot.totalTokens
@@ -306,28 +299,6 @@ export default function BurnGauge() {
 
   const BUCKET_SEC = { '1m': 2, '5m': 10, '15m': 30, '1h': 120, '6h': 720, '24h': 2880 }
   const bucketSec = BUCKET_SEC[range] ?? 10
-
-  async function saveLabel() {
-    if (!sessionId || !labelRef.current.trim()) return
-    await fetch('/api/label', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, label: labelRef.current.trim() }),
-    })
-    setLabelSaved(true)
-    setTimeout(() => setLabelSaved(false), 2000)
-  }
-
-  const btnBase = {
-    fontFamily: 'var(--font-mono)',
-    fontSize: '0.65rem',
-    letterSpacing: '0.08em',
-    padding: '3px 10px',
-    borderRadius: 999,
-    border: '1px solid',
-    cursor: 'pointer',
-    transition: 'background 0.15s, color 0.15s',
-  }
 
   if (error) {
     return (
@@ -341,28 +312,12 @@ export default function BurnGauge() {
 
   return (
     <div className="glass-card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Divider + range picker */}
+      {/* Divider + status */}
       <div style={{ borderTop: '1px solid var(--card-border)', margin: '8px 0 6px', paddingTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
         <span className="label">history</span>
         <span className="mono muted" style={{ fontSize: '0.58rem' }}>{RANGE_DESC[range]}</span>
         {loading && <span className="muted" style={{ fontSize: '0.6rem' }}>...</span>}
         {chartFrozen && <span className="mono" style={{ fontSize: '0.6rem', color: 'var(--accent-amber)' }}>hover-freeze</span>}
-        <span style={{ flex: 1 }} />
-        <div style={{ display: 'flex', gap: 3 }}>
-          {ranges.map(r => {
-            const active = r === range
-            return (
-              <button key={r} onClick={() => setRange(r)} style={{
-                ...btnBase,
-                fontSize: '0.6rem',
-                padding: '2px 8px',
-                background: active ? 'rgba(0,229,255,0.15)' : 'transparent',
-                borderColor: active ? 'rgba(0,229,255,0.5)' : 'rgba(255,255,255,0.12)',
-                color: active ? 'var(--accent-cyan)' : 'var(--text-muted)',
-              }}>{r}</button>
-            )
-          })}
-        </div>
       </div>
 
       {/* Rolling bar chart */}
@@ -390,32 +345,6 @@ export default function BurnGauge() {
         )}
       </div>
 
-      {/* Footer: label input */}
-      {sessionId && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexShrink: 0, borderTop: '1px solid var(--card-border)', paddingTop: 6 }}>
-          <span className="label">label</span>
-          <input
-            value={label}
-            onChange={e => setLabel(e.target.value)}
-            onBlur={saveLabel}
-            onKeyDown={e => e.key === 'Enter' && saveLabel()}
-            placeholder="e.g. no-plugins / with-context7"
-            style={{
-              flex: 1,
-              maxWidth: 260,
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 6,
-              color: 'var(--text-primary)',
-              fontFamily: 'var(--font-mono)',
-              fontSize: '0.72rem',
-              padding: '3px 10px',
-              outline: 'none',
-            }}
-          />
-          {labelSaved && <span style={{ color: 'var(--accent-cyan)', fontSize: '0.65rem', fontFamily: 'var(--font-mono)' }}>saved</span>}
-        </div>
-      )}
     </div>
   )
 }

@@ -1,18 +1,29 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import toast, { Toaster } from 'react-hot-toast'
 import { useUsageStore } from './hooks/useUsageStore.js'
+import { usePeriodicTotals } from './hooks/usePeriodicTotals.js'
+import { useEstimates } from './hooks/useEstimates.js'
+import { useProjectTotals } from './hooks/useProjectTotals.js'
 import Banner from './components/Banner.jsx'
 import BurnRateHero from './components/BurnRateHero.jsx'
 import SessionTotals from './components/SessionTotals.jsx'
+import Estimates from './components/Estimates.jsx'
 import BurnGauge from './components/BurnGauge.jsx'
+import ProjectCosts from './components/ProjectCosts.jsx'
+import Totals from './components/Totals.jsx'
 
 export default function App() {
   const store = useUsageStore()
+  const periodicTotals = usePeriodicTotals()
+  const estimates = useEstimates()
+  const projectTotals = useProjectTotals()
   const {
     latest, delta, burnRate, isIdle, isOverThreshold, error,
-    interval, paused, threshold, darkMode,
+    interval, paused, threshold, darkMode, snapshots,
     setIntervalSec, togglePause, setThreshold, toggleDarkMode,
   } = store
+
+  const [chartRange, setChartRange] = useState('5m')
 
   const wasOverRef = useRef(false)
   useEffect(() => {
@@ -53,6 +64,8 @@ export default function App() {
         onPause={togglePause}
         interval={interval}
         onIntervalChange={setIntervalSec}
+        range={chartRange}
+        onRangeChange={setChartRange}
       />
       <div className="app-grid">
         <div className={`glass-card area-burn${isOverThreshold ? ' glass-card--alert' : ''}`}>
@@ -65,6 +78,7 @@ export default function App() {
             error={error}
             delta={delta}
             interval={interval}
+            snapshots={snapshots}
           />
         </div>
 
@@ -72,8 +86,20 @@ export default function App() {
           <SessionTotals latest={latest} />
         </div>
 
+        <div className="glass-card area-estimates">
+          <Estimates estimates={estimates} burnRate={burnRate} chartRange={chartRange} />
+        </div>
+
+        <div className="glass-card area-period-totals">
+          <Totals periodicTotals={periodicTotals} />
+        </div>
+
         <div className="area-history">
-          <BurnGauge />
+          <BurnGauge threshold={threshold} range={chartRange} />
+        </div>
+
+        <div className="area-projects">
+          <ProjectCosts projects={projectTotals.projects} />
         </div>
       </div>
     </div>

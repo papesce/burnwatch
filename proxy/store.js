@@ -11,7 +11,7 @@ mkdirSync(DATA_DIR, { recursive: true })
 
 // ── Labels (session id → string) ────────────────────────────────────────────
 
-function readLabels() {
+export function readLabels() {
   try { return JSON.parse(readFileSync(LABEL_FILE, 'utf8')) } catch (_) { return {} }
 }
 

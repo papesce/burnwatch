@@ -56,6 +56,7 @@ export function readEntries(sinceMs = Date.now() - TTL_MS) {
         entries.push({
           ts,
           model,
+          project:              proj,
           sessionId:            r.sessionId ?? file.replace('.jsonl', ''),
           inputTokens:          usage.input_tokens                ?? 0,
           outputTokens:         usage.output_tokens               ?? 0,

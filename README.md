@@ -30,49 +30,22 @@ npm i -g ccusage
 
 ---
 
-## Install
+## Quick Start
 
 ```bash
-git clone https://github.com/your-username/burnwatch.git
-cd burnwatch
-npm install
+./burn.sh install    # install npm deps + ccusage
+./burn.sh link       # symlink 'burn' into /usr/local/bin (run once)
 ```
 
----
-
-## Quick Start (burn.sh)
-
-A convenience script is included for common tasks:
+After linking, use `burn` from any terminal:
 
 ```bash
-./burn.sh install    # npm install + ccusage
-./burn.sh open       # start the dev server
-./burn.sh kill       # stop processes on ports 3777/5777
-./burn.sh restart    # kill then restart
-./burn.sh build      # production build
-./burn.sh setup      # symlink to /usr/local/bin/burn (run once)
-./burn.sh uninstall  # remove symlink and node_modules
-```
-
-After running `./burn.sh setup`, you can use `burn install`, `burn open`, etc. from any terminal.
-
----
-
-## Run
-
-```bash
-npm run dev
-```
-
-Opens at **http://localhost:5777**. The Express proxy starts on port **3777** automatically via `concurrently`.
-
----
-
-## Build
-
-```bash
-npm run build    # output in dist/
-npm run preview  # serve the build locally
+burn start           # launch dashboard in background → http://localhost:5777
+burn dev             # launch in foreground with live logs
+burn stop            # stop the dashboard
+burn restart         # stop then start in background
+burn build           # production build (output in dist/)
+burn uninstall       # remove symlink and node_modules
 ```
 
 ---

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 
 function fmtNum(n) {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + 'M'
@@ -6,40 +6,101 @@ function fmtNum(n) {
   return Math.round(n).toString()
 }
 
-function useSpringNumber(target, duration = 200) {
-  const [display, setDisplay] = useState(target)
-  const rafRef = useRef(null)
-  useEffect(() => {
-    cancelAnimationFrame(rafRef.current)
-    const from = display
-    const start = performance.now()
-    function tick(now) {
-      const progress = Math.min((now - start) / duration, 1)
-      const eased = 1 - Math.pow(1 - progress, 3)
-      setDisplay(from + (target - from) * eased)
-      if (progress < 1) rafRef.current = requestAnimationFrame(tick)
-    }
-    rafRef.current = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [target])
-  return display
+function projectedDayCost(costPerMin) {
+  const now = new Date()
+  const minsRemaining = (24 * 60) - (now.getHours() * 60 + now.getMinutes())
+  return costPerMin * minsRemaining
 }
 
+const HOLD_MS = 4000
+
 export default function BurnRateHero({
-  burnRate, isIdle, isOverThreshold, threshold, onThresholdChange, error, delta, interval,
+  burnRate, isIdle, isOverThreshold, threshold, onThresholdChange, error, delta, interval, snapshots,
 }) {
   const [editingThreshold, setEditingThreshold] = useState(false)
   const [editValue, setEditValue] = useState(threshold.toFixed(2))
   const inputRef = useRef(null)
 
-  const flameOpacity = Math.min(burnRate.costPerMin / (threshold || 0.01), 1) * 0.9
-  const accentColor = isOverThreshold ? 'var(--accent-danger)' : 'var(--accent-cyan)'
+  // Hold last active values during idle grace period, then fade to zero
+  const lastActiveRef = useRef(burnRate)
+  const [idleHeld, setIdleHeld] = useState(false)
 
-  const displayTokens  = useSpringNumber(burnRate.tokensPerSec)
-  const displayCostMin = useSpringNumber(burnRate.costPerMin)
-  const displayCostHour = useSpringNumber(burnRate.costPerHour)
+  // History navigation
+  const nonZeroSnaps = useMemo(() =>
+    (snapshots ?? []).filter(s => s.burnRateTokensPerMin > 0),
+    [snapshots]
+  )
+  const [histIdx, setHistIdx] = useState(null) // null = live
+  const isHistorical = histIdx !== null
 
-  const hasDelta = delta && delta.tokens > 0
+  const navPrev = useCallback(() => {
+    setHistIdx(i => {
+      if (nonZeroSnaps.length === 0) return null
+      if (i === null) return nonZeroSnaps.length - 1
+      return Math.max(0, i - 1)
+    })
+  }, [nonZeroSnaps.length])
+
+  const navNext = useCallback(() => {
+    setHistIdx(i => {
+      if (i === null) return null
+      if (i >= nonZeroSnaps.length - 1) return null
+      return i + 1
+    })
+  }, [nonZeroSnaps.length])
+
+  // Reset to live when new snapshots arrive and we're at tail
+  const prevSnapLenRef = useRef(nonZeroSnaps.length)
+  useEffect(() => {
+    if (nonZeroSnaps.length !== prevSnapLenRef.current) {
+      prevSnapLenRef.current = nonZeroSnaps.length
+      setHistIdx(i => (i !== null && i >= nonZeroSnaps.length - 1 ? null : i))
+    }
+  }, [nonZeroSnaps.length])
+
+  // Keyboard: ← →, Escape to return to live
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.target.tagName === 'INPUT') return
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); navPrev() }
+      if (e.key === 'ArrowRight') { e.preventDefault(); navNext() }
+      if (e.key === 'Escape')     setHistIdx(null)
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [navPrev, navNext])
+
+  useEffect(() => {
+    if (!isIdle) {
+      lastActiveRef.current = burnRate
+      setIdleHeld(false)
+      return
+    }
+    const t = setTimeout(() => setIdleHeld(true), HOLD_MS)
+    return () => clearTimeout(t)
+  }, [isIdle]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Historical snapshot overrides live display
+  const histSnap = isHistorical ? nonZeroSnaps[histIdx] : null
+  const histBurnRate = histSnap ? {
+    tokensPerSec: histSnap.burnRateTokensPerMin / 60,
+    costPerMin:   histSnap.burnRateCostPerHour / 60,
+    costPerHour:  histSnap.burnRateCostPerHour,
+  } : null
+
+  // During hold: freeze last active values. After hold: spring to zero.
+  const displaySource = histBurnRate
+    ?? ((isIdle && idleHeld)  ? { tokensPerSec: 0, costPerMin: 0, costPerHour: 0 }
+       : isIdle                ? lastActiveRef.current
+       : burnRate)
+  const flameOpacity = isHistorical ? 0
+    : Math.min((isIdle && !idleHeld ? lastActiveRef.current.costPerMin : burnRate.costPerMin) / (threshold || 0.01), 1) * 0.9
+  const accentColor = isHistorical ? 'var(--text-muted)'
+    : isOverThreshold ? 'var(--accent-danger)' : 'var(--accent-cyan)'
+
+  const displayTokens   = displaySource.tokensPerSec
+  const displayCostHour = displaySource.costPerHour
+  const showIdle = !isHistorical && isIdle && idleHeld
 
   useEffect(() => {
     if (editingThreshold && inputRef.current) {
@@ -66,15 +127,44 @@ export default function BurnRateHero({
         '--flame-opacity': flameOpacity,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span className="label">burn rate</span>
-        {isIdle && <span className="label" style={{ color: 'var(--text-muted)' }}>idle</span>}
+        {showIdle && <span className="label" style={{ color: 'var(--text-muted)' }}>idle</span>}
+        {isHistorical && (
+          <span className="mono muted" style={{ fontSize: '0.62rem' }}>
+            {histIdx + 1}/{nonZeroSnaps.length}
+          </span>
+        )}
         <span style={{ flex: 1 }} />
-        {isOverThreshold && (
+        {!isHistorical && isOverThreshold && (
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--accent-danger)', fontWeight: 600 }}>
             OVER THRESHOLD
           </span>
         )}
+        <div style={{ display: 'flex', gap: 2 }}>
+          <button
+            onClick={navPrev}
+            disabled={nonZeroSnaps.length === 0 || histIdx === 0}
+            title="Previous (←)"
+            style={{
+              background: 'none', border: '1px solid var(--card-border)', borderRadius: 4,
+              color: 'var(--text-muted)', cursor: 'pointer', padding: '1px 7px',
+              fontSize: '0.7rem', fontFamily: 'var(--font-mono)', opacity: (nonZeroSnaps.length === 0 || histIdx === 0) ? 0.3 : 1,
+            }}
+          >‹</button>
+          <button
+            onClick={navNext}
+            disabled={!isHistorical}
+            title="Next (→)"
+            style={{
+              background: 'none', border: '1px solid var(--card-border)', borderRadius: 4,
+              color: isHistorical ? 'var(--accent-cyan)' : 'var(--text-muted)',
+              cursor: isHistorical ? 'pointer' : 'default',
+              padding: '1px 7px', fontSize: '0.7rem', fontFamily: 'var(--font-mono)',
+              opacity: isHistorical ? 1 : 0.3,
+            }}
+          >›</button>
+        </div>
       </div>
 
       {error ? (
@@ -84,31 +174,26 @@ export default function BurnRateHero({
         </div>
       ) : (
         <>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
-            <div className="val-large" style={{ color: accentColor }}>
-              {displayTokens.toFixed(1)}
-              <span style={{ fontSize: '0.4em', color: 'var(--text-muted)', marginLeft: 6, fontWeight: 400 }}>tok/s</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
+              <div className="val-large" style={{ color: accentColor }}>
+                {displayTokens.toFixed(1)}
+                <span style={{ fontSize: '0.4em', color: 'var(--text-muted)', marginLeft: 6, fontWeight: 400 }}>tok/s</span>
+              </div>
+              <div className="val-medium amber">
+                ${displayCostHour.toFixed(2)}
+                <span style={{ fontSize: '0.55em', color: 'var(--text-muted)', marginLeft: 5, fontWeight: 400 }}>/hr</span>
+              </div>
             </div>
-            <div className="val-medium amber">
-              ${displayCostMin.toFixed(4)}
-              <span style={{ fontSize: '0.55em', color: 'var(--text-muted)', marginLeft: 5, fontWeight: 400 }}>/min</span>
-            </div>
-            <div className="mono muted" style={{ fontSize: '0.75rem' }}>
-              ${displayCostHour.toFixed(2)}/hr
+            <div className="mono muted" style={{ fontSize: '0.7rem', opacity: showIdle ? 0 : 1, transition: 'opacity 0.3s', display: 'flex', gap: 14 }}>
+              <span>~${projectedDayCost(displaySource.costPerMin).toFixed(2)} <span style={{ fontSize: '0.85em' }}>today</span></span>
+              <span>~${(projectedDayCost(displaySource.costPerMin) * 7).toFixed(2)} <span style={{ fontSize: '0.85em' }}>7d</span></span>
+              <span>~${(projectedDayCost(displaySource.costPerMin) * 30).toFixed(2)} <span style={{ fontSize: '0.85em' }}>30d</span></span>
             </div>
           </div>
 
-          {/* Delta inline */}
-          {hasDelta && (
-            <div className="mono" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', gap: 12 }}>
-              <span>Δ <span style={{ color: 'var(--accent-cyan)' }}>+{fmtNum(delta.tokens)} tok</span></span>
-              <span>Δ <span style={{ color: 'var(--accent-amber)' }}>+${delta.cost.toFixed(5)}</span></span>
-              <span className="muted" style={{ fontSize: '0.6rem' }}>this poll</span>
-            </div>
-          )}
-
           {/* Threshold pill */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: hasDelta ? 0 : -2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: -2 }}>
             <span className="label" style={{ fontSize: '0.65rem' }}>alert</span>
             {editingThreshold ? (
               <input
@@ -156,6 +241,9 @@ export default function BurnRateHero({
                 <span style={{ fontSize: '0.55rem', opacity: 0.5, marginLeft: 2 }}>&#9998;</span>
               </span>
             )}
+            <span className="mono muted" style={{ fontSize: '0.65rem', opacity: 0.55 }}>
+              (${(threshold * 60).toFixed(2)}/hr)
+            </span>
             <button
               onClick={() => onThresholdChange(+(threshold + 0.01).toFixed(2))}
               style={{

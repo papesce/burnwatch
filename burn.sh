@@ -11,6 +11,14 @@ done
 PROJECT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 CMD="${1:-help}"
 
+# Alias resolution: accept old names and intuitive synonyms
+case "$CMD" in
+  open)   CMD="start" ;;
+  start)  CMD="start" ;;
+  stop)   CMD="kill" ;;
+  link)   CMD="setup" ;;
+esac
+
 # Resolve nvm-managed node into PATH so nohup/background runs can find it
 if [ -n "${NVM_DIR:-}" ] && [ -s "$NVM_DIR/nvm.sh" ]; then
   NODE_BIN="$(ls "$NVM_DIR/versions/node"/*/bin/node 2>/dev/null | sort -V | tail -1 | xargs dirname 2>/dev/null || true)"
@@ -27,25 +35,25 @@ case "$CMD" in
     else
       echo "==> ccusage already installed"
     fi
-    echo "Done. Run 'burn open' to start."
+    echo "Done. Run 'burn start' to launch."
     ;;
-  open)
+  start)
     echo "==> Starting BurnWatch in background (logs → .burnwatch.log)..."
     nohup npm run dev --prefix "$PROJECT_DIR" > "$PROJECT_DIR/.burnwatch.log" 2>&1 &
-    echo "PID: $!"
+    echo "PID: $! — open http://localhost:5777"
     ;;
   dev)
     echo "==> Starting BurnWatch (foreground)..."
     exec npm run dev --prefix "$PROJECT_DIR"
     ;;
   kill)
-    echo "==> Killing processes on ports 3777 and 5777..."
+    echo "==> Stopping processes on ports 3777 and 5777..."
     lsof -ti:3777,5777 | xargs kill -9 2>/dev/null || true
     echo "Done."
     ;;
   restart)
     "$0" kill
-    "$0" dev
+    "$0" start
     ;;
   build)
     npm run build --prefix "$PROJECT_DIR"
@@ -57,7 +65,7 @@ case "$CMD" in
     else
       echo "==> Creating symlink: sudo ln -sf '$PROJECT_DIR/burn.sh' '$LINK'"
       sudo ln -sf "$PROJECT_DIR/burn.sh" "$LINK"
-      echo "Done. You can now run 'burn <command>' from any terminal."
+      echo "Done. You can now run 'burn start' from any terminal."
     fi
     ;;
   uninstall)
@@ -80,18 +88,23 @@ case "$CMD" in
     echo "BurnWatch $(node -p "require('$PROJECT_DIR/package.json').version")"
     ;;
   help|*)
+    echo "BurnWatch — real-time Claude token burn rate dashboard"
+    echo ""
     echo "Usage: burn <command>"
     echo ""
-    echo "Commands:"
-    echo "  install       Install all dependencies (npm install + ccusage)"
-    echo "  open          Start the development server (background)"
-    echo "  dev           Start the development server (foreground with logs)"
-    echo "  kill          Stop processes on ports 3777 and 5777"
-    echo "  restart       Kill then restart"
-    echo "  build         Production build"
-    echo "  setup         Make 'burn' available globally (symlink in /usr/local/bin)"
+    echo "First-time setup:"
+    echo "  install       Install npm dependencies and ccusage"
+    echo "  link          Symlink 'burn' into /usr/local/bin (run once)"
+    echo ""
+    echo "Daily use:"
+    echo "  start         Launch dashboard in background  → http://localhost:5777"
+    echo "  dev           Launch dashboard in foreground (with live logs)"
+    echo "  stop          Stop the running dashboard (ports 3777 + 5777)"
+    echo "  restart       Stop then start in background"
+    echo ""
+    echo "Other:"
+    echo "  build         Production build (output in dist/)"
     echo "  uninstall     Remove global symlink and node_modules"
     echo "  version       Show version"
-    echo "  help          Show this help"
     ;;
 esac

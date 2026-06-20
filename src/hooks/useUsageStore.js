@@ -15,6 +15,7 @@ function buildSnapshot(block, ts, latencyMs) {
     cacheCreationTokens:  block.cacheCreationTokens,
     cacheReadTokens:      block.cacheReadTokens,
     models:               block.models,
+    startTime:            block.startTime ?? null,
     burnRateTokensPerMin: block.burnRate.tokensPerMinuteForIndicator,
     burnRateCostPerHour:  block.burnRate.costPerHour,
   }

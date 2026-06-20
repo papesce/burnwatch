@@ -18,10 +18,14 @@ const RANGE_CONFIG = {
   '24h': { sinceMs: 86_400_000,    resolution: '48m', pollMs: 60_000 },
 }
 
-export function useHistoryStore(frozen) {
+export { RANGES }
+
+export function useHistoryStore(frozen, controlledRange) {
   const [rows,     setRows]     = useState([])
-  const [range,    setRange]    = useState('5m')
+  const [internalRange, setInternalRange] = useState('5m')
   const [barCount, setBarCount] = useState(60)
+  const range = controlledRange ?? internalRange
+  const setRange = controlledRange == null ? setInternalRange : () => {}
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState(null)
 
