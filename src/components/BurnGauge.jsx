@@ -27,7 +27,8 @@ function barColor(models) {
   return modelColor(models)
 }
 
-function RollingBars({ rows, threshold, costPerToken, bucketSec, onBarCountChange }) {
+
+function RollingBars({ rows, threshold, costPerToken, bucketSec, range, onBarCountChange }) {
   const containerRef = useRef(null)
   const [width, setWidth] = useState(0)
   const [height, setHeight] = useState(0)
@@ -48,11 +49,11 @@ function RollingBars({ rows, threshold, costPerToken, bucketSec, onBarCountChang
     return () => ro.disconnect()
   }, [onBarCountChange])
 
-  const BAR_WIDTH = 6
-  const BAR_GAP = 1
+  const BAR_WIDTH = 10
+  const BAR_GAP = 2
   const padTop = 16
   const padBottom = 20
-  const padLeft = 4
+  const padLeft = 38
   const padRight = 36 // extra room for cost axis label
 
   const chartH = Math.max(1, height - padTop - padBottom)
@@ -77,6 +78,27 @@ function RollingBars({ rows, threshold, costPerToken, bucketSec, onBarCountChang
   const maxCost = useMemo(() => {
     const m = Math.max(...visibleRows.map(r => r.costUSD ?? 0), 0)
     return m * 1.15 || 0.001
+  }, [visibleRows])
+
+  const fmtCost = v => v < 0.001 ? v.toFixed(6) : v < 0.01 ? v.toFixed(5) : v.toFixed(4)
+
+  const avgLine = useMemo(() => {
+    if (visibleRows.length < 3) return null
+    const meanTokens = visibleRows.reduce((s, r) => s + r.tokens, 0) / visibleRows.length
+    const meanCost   = visibleRows.reduce((s, r) => s + (r.costUSD ?? 0), 0) / visibleRows.length
+    return { meanTokens, meanCost }
+  }, [visibleRows])
+
+  const peakTokenIdx = useMemo(() => {
+    let max = -1, idx = -1
+    visibleRows.forEach((r, i) => { if (r.tokens > max) { max = r.tokens; idx = i } })
+    return idx
+  }, [visibleRows])
+
+  const peakCostIdx = useMemo(() => {
+    let max = -1, idx = -1
+    visibleRows.forEach((r, i) => { if ((r.costUSD ?? 0) > max) { max = r.costUSD ?? 0; idx = i } })
+    return idx
   }, [visibleRows])
 
   const threshY = thresholdTokens === Infinity
@@ -148,6 +170,34 @@ function RollingBars({ rows, threshold, costPerToken, bucketSec, onBarCountChang
             )
           })()}
 
+          {/* Left Y-axis — token scale */}
+          <line x1={padLeft} y1={padTop} x2={padLeft} y2={padTop + chartH}
+            stroke="rgba(167,139,250,0.2)" strokeWidth={0.5} />
+          <text x={padLeft - 3} y={padTop + 4} fontSize={8} fontFamily="var(--font-mono)"
+            fill="rgba(167,139,250,0.5)" textAnchor="end">{fmtNum(maxVal / 1.15)}</text>
+          <text x={padLeft - 3} y={padTop + chartH * 0.5 + 4} fontSize={8} fontFamily="var(--font-mono)"
+            fill="rgba(167,139,250,0.4)" textAnchor="end">{fmtNum(maxVal / 1.15 / 2)}</text>
+          <text x={padLeft - 3} y={padTop + chartH} fontSize={8} fontFamily="var(--font-mono)"
+            fill="rgba(167,139,250,0.3)" textAnchor="end">0</text>
+
+          {/* Avg dashed lines only — labels drawn after bars */}
+          {avgLine && (() => {
+            const avgY = padTop + chartH - (avgLine.meanTokens / maxVal) * chartH
+            if (avgY < padTop || avgY > padTop + chartH) return null
+            return (
+              <line x1={padLeft} y1={avgY} x2={width - padRight} y2={avgY}
+                stroke="rgba(167,139,250,0.5)" strokeWidth={1} strokeDasharray="3 3" />
+            )
+          })()}
+          {avgLine && (() => {
+            const avgCostY = padTop + chartH - (avgLine.meanCost / maxCost) * chartH
+            if (avgCostY < padTop || avgCostY > padTop + chartH) return null
+            return (
+              <line x1={padLeft} y1={avgCostY} x2={width - padRight} y2={avgCostY}
+                stroke="rgba(52,211,153,0.5)" strokeWidth={1} strokeDasharray="3 3" />
+            )
+          })()}
+
           {/* Bars — fixed width, newest at right edge */}
           {visibleRows.map((row, i) => {
             const barH = Math.max(1, (row.tokens / maxVal) * chartH)
@@ -170,6 +220,26 @@ function RollingBars({ rows, threshold, costPerToken, bucketSec, onBarCountChang
             )
           })}
 
+          {/* Peak token annotation */}
+          {peakTokenIdx >= 0 && visibleRows[peakTokenIdx]?.tokens > 0 && peakTokenIdx !== hoverIdx && (() => {
+            const row = visibleRows[peakTokenIdx]
+            const sameAsCost = peakTokenIdx === peakCostIdx
+            const cx = padLeft + peakTokenIdx * (BAR_WIDTH + BAR_GAP) + BAR_WIDTH / 2 + (sameAsCost ? -10 : 0)
+            const py = padTop + chartH - (row.tokens / maxVal) * chartH
+            const lh = 13, lw = 42
+            const lx = cx - lw / 2
+            const ly = Math.max(py - 20, padTop + 2)
+            return (
+              <g>
+                <line x1={cx} y1={ly + lh} x2={cx} y2={Math.min(py, padTop + chartH)}
+                  stroke="rgba(167,139,250,0.5)" strokeWidth={0.8} />
+                <rect x={lx} y={ly} width={lw} height={lh} rx={3} fill="rgba(7,8,13,0.85)" />
+                <text x={cx} y={ly + lh - 3} fontSize={9} fontFamily="var(--font-mono)"
+                  fill="rgba(167,139,250,0.95)" textAnchor="middle">{fmtNum(row.tokens)}</text>
+              </g>
+            )
+          })()}
+
           {/* Cost line (right Y-axis) */}
           {visibleRows.length > 1 && (() => {
             const points = visibleRows.map((row, i) => {
@@ -180,11 +250,9 @@ function RollingBars({ rows, threshold, costPerToken, bucketSec, onBarCountChang
             const lastRow = visibleRows[visibleRows.length - 1]
             const lastCy = padTop + chartH - ((lastRow?.costUSD ?? 0) / maxCost) * chartH
             const rightX = width - padRight + 4
-            // right axis ticks
             const midCost = maxCost / 2
             const midY = padTop + chartH * 0.5
             const topY = padTop
-            const fmtCost = v => v < 0.001 ? v.toFixed(6) : v < 0.01 ? v.toFixed(5) : v.toFixed(4)
             return (
               <>
                 <polyline
@@ -204,6 +272,25 @@ function RollingBars({ rows, threshold, costPerToken, bucketSec, onBarCountChang
                       fill="#34d399" opacity={i === hoverIdx ? 1 : 0.7} />
                   )
                 })}
+                {/* Peak cost annotation */}
+                {peakCostIdx >= 0 && (visibleRows[peakCostIdx]?.costUSD ?? 0) > 0 && peakCostIdx !== hoverIdx && (() => {
+                  const row = visibleRows[peakCostIdx]
+                  const sameAsToken = peakCostIdx === peakTokenIdx
+                  const cx = padLeft + peakCostIdx * (BAR_WIDTH + BAR_GAP) + BAR_WIDTH / 2 + (sameAsToken ? 10 : 0)
+                  const cy = padTop + chartH - ((row.costUSD ?? 0) / maxCost) * chartH
+                  const lh = 13, lw = 48
+                  const lx = cx - lw / 2
+                  const ly = Math.max(cy - 20, padTop + 2)
+                  return (
+                    <g>
+                      <line x1={cx} y1={ly + lh} x2={cx} y2={Math.min(cy, padTop + chartH)}
+                        stroke="rgba(52,211,153,0.5)" strokeWidth={0.8} />
+                      <rect x={lx} y={ly} width={lw} height={lh} rx={3} fill="rgba(7,8,13,0.85)" />
+                      <text x={cx} y={ly + lh - 3} fontSize={9} fontFamily="var(--font-mono)"
+                        fill="rgba(52,211,153,0.95)" textAnchor="middle">${fmtCost(row.costUSD ?? 0)}</text>
+                    </g>
+                  )
+                })()}
                 {/* right axis line */}
                 <line x1={width - padRight + 2} y1={padTop} x2={width - padRight + 2} y2={padTop + chartH}
                   stroke="rgba(52,211,153,0.25)" strokeWidth={0.5} />
@@ -220,20 +307,54 @@ function RollingBars({ rows, threshold, costPerToken, bucketSec, onBarCountChang
             )
           })()}
 
+          {/* Avg label pills — drawn after bars so they're never occluded */}
+          {avgLine && (() => {
+            const avgY = padTop + chartH - (avgLine.meanTokens / maxVal) * chartH
+            if (avgY < padTop || avgY > padTop + chartH) return null
+            const lh = 13, lw = 92
+            const lx = width - padRight - 2 - lw
+            const ly = Math.min(Math.max(avgY - lh - 2, padTop), padTop + chartH - lh)
+            return (
+              <g>
+                <rect x={lx} y={ly} width={lw} height={lh} rx={3} fill="rgba(7,8,13,0.95)" />
+                <text x={lx + 4} y={ly + lh - 3} fontSize={8} fontFamily="var(--font-mono)"
+                  fill="rgba(167,139,250,1)" textAnchor="start">avg {range} {fmtNum(Math.round(avgLine.meanTokens))}tok</text>
+              </g>
+            )
+          })()}
+          {avgLine && (() => {
+            const avgTokenY = padTop + chartH - (avgLine.meanTokens / maxVal) * chartH
+            const avgCostY = padTop + chartH - (avgLine.meanCost / maxCost) * chartH
+            if (avgCostY < padTop || avgCostY > padTop + chartH) return null
+            const lh = 13, lw = 82
+            const lx = width - padRight - 2 - lw
+            const tokenLy = Math.min(Math.max(avgTokenY - lh - 2, padTop), padTop + chartH - lh)
+            const rawLy = Math.min(Math.max(avgCostY - lh - 2, padTop), padTop + chartH - lh)
+            const ly = Math.abs(rawLy - tokenLy) < lh + 2 ? tokenLy + lh + 2 : rawLy
+            return (
+              <g>
+                <rect x={lx} y={ly} width={lw} height={lh} rx={3} fill="rgba(7,8,13,0.95)" />
+                <text x={lx + 4} y={ly + lh - 3} fontSize={8} fontFamily="var(--font-mono)"
+                  fill="rgba(52,211,153,1)" textAnchor="start">avg {range} ${fmtCost(avgLine.meanCost)}</text>
+              </g>
+            )
+          })()}
+
           {/* Threshold label */}
-          {threshY > 10 && threshY < height - 10 && (
-            <text
-              x={width - padRight - 2}
-              y={threshY - 4}
-              textAnchor="end"
-              fill="var(--accent-danger)"
-              fontSize={9}
-              fontFamily="var(--font-mono)"
-              opacity={0.7}
-            >
-              ${threshold.toFixed(2)}/min
-            </text>
-          )}
+          {threshY > 10 && threshY < height - 10 && (() => {
+            const lw = 58, lh = 13
+            const lx = width - padRight - 2 - lw
+            const ly = Math.max(threshY - lh - 1, padTop)
+            return (
+              <g>
+                <rect x={lx} y={ly} width={lw} height={lh} rx={3} fill="rgba(7,8,13,0.75)" />
+                <text x={width - padRight - 6} y={ly + lh - 3} textAnchor="end"
+                  fill="var(--accent-danger)" fontSize={10} fontFamily="var(--font-mono)" opacity={0.9}>
+                  ${threshold.toFixed(2)}/min
+                </text>
+              </g>
+            )
+          })()}
         </svg>
       )}
 
@@ -318,6 +439,19 @@ export default function BurnGauge({ threshold, range: rangeProp }) {
         <span className="mono muted" style={{ fontSize: '0.58rem' }}>{RANGE_DESC[range]}</span>
         {loading && <span className="muted" style={{ fontSize: '0.6rem' }}>...</span>}
         {chartFrozen && <span className="mono" style={{ fontSize: '0.6rem', color: 'var(--accent-amber)' }}>hover-freeze</span>}
+        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'var(--font-mono)', fontSize: '0.58rem' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: 'rgba(167,139,250,0.7)' }}>
+            <span style={{ width: 7, height: 7, background: '#a78bfa', borderRadius: 1, display: 'inline-block' }} />
+            tokens
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: 'rgba(52,211,153,0.7)' }}>
+            <svg width={14} height={6} style={{ display: 'inline-block' }}>
+              <line x1={0} y1={3} x2={14} y2={3} stroke="#34d399" strokeWidth={1.5} />
+              <circle cx={7} cy={3} r={1.5} fill="#34d399" />
+            </svg>
+            cost ($)
+          </span>
+        </span>
       </div>
 
       {/* Rolling bar chart */}
@@ -340,6 +474,7 @@ export default function BurnGauge({ threshold, range: rangeProp }) {
             threshold={threshold}
             costPerToken={costPerToken}
             bucketSec={bucketSec}
+            range={range}
             onBarCountChange={setBarCount}
           />
         )}

@@ -53,15 +53,15 @@ function shortModel(id = '') {
 function TokenRow({ label, value, color, cost }) {
   const display = useSpringNumber(value)
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-      <span className="label">{label}</span>
-      <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
-        <span className="mono val-small" style={{ color: color ?? 'var(--text-primary)' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+      <span className="label" style={{ fontSize: '0.6rem', minWidth: 64 }}>{label}</span>
+      <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+        <span className="mono" style={{ color: color ?? 'var(--text-primary)', fontSize: '0.72rem' }}>
           {fmtNum(display)}
         </span>
         {cost != null && (
-          <span className="mono muted" style={{ fontSize: '0.62rem', opacity: 0.65 }}>
-            ${cost.toFixed(5)}
+          <span className="mono muted" style={{ fontSize: '0.68rem', opacity: 0.7, minWidth: 36, textAlign: 'right' }}>
+            ${cost.toFixed(2)}
           </span>
         )}
       </span>
@@ -107,7 +107,7 @@ export default function SessionTotals({ latest }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 8 }}>
       {/* Header with duration */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
         <span className="label">session totals</span>
@@ -129,7 +129,7 @@ export default function SessionTotals({ latest }) {
 
       {/* Total cost */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-        <span className="val-medium amber">${cost.toFixed(4)}</span>
+        <span className="val-medium amber">${cost.toFixed(2)}</span>
         <span className="label">total cost</span>
       </div>
 

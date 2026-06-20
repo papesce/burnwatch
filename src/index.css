@@ -101,21 +101,86 @@ body::before {
   overflow: hidden;
 }
 
+/* Ambient heat glow — wide, soft, slow */
 .burn-flame::before {
   content: '';
   position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 50% 100%, rgba(255,107,53,calc(var(--flame-opacity,0)*0.35)) 0%, rgba(255,77,109,calc(var(--flame-opacity,0)*0.25)) 35%, transparent 65%);
+  bottom: -20%;
+  left: 5%;
+  right: 5%;
+  height: 90%;
+  background: radial-gradient(ellipse at 50% 100%,
+    rgba(255,120,20,calc(var(--flame-opacity,0)*0.45)) 0%,
+    rgba(255,60,10,calc(var(--flame-opacity,0)*0.25)) 40%,
+    rgba(180,20,60,calc(var(--flame-opacity,0)*0.1)) 70%,
+    transparent 100%
+  );
   pointer-events: none;
   z-index: 0;
-  transition: background 0.5s ease;
-  animation: flameFlicker 3s ease-in-out infinite;
+  filter: blur(14px);
+  animation: flameGlow 4s ease-in-out infinite;
 }
 
-@keyframes flameFlicker {
-  0%, 100% { opacity: 0.7; transform: scaleY(1); }
-  33%      { opacity: 1;   transform: scaleY(1.04); }
-  66%      { opacity: 0.85; transform: scaleY(0.98); }
+/* Inner hot core — narrower, sharper */
+.burn-flame::after {
+  content: '';
+  position: absolute;
+  bottom: -10%;
+  left: 25%;
+  right: 25%;
+  height: 55%;
+  background: radial-gradient(ellipse at 50% 100%,
+    rgba(255,210,60,calc(var(--flame-opacity,0)*0.4)) 0%,
+    rgba(255,100,20,calc(var(--flame-opacity,0)*0.2)) 55%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(6px);
+  animation: flameCoreFlicker 1.8s ease-in-out infinite;
+}
+
+@keyframes flameGlow {
+  0%, 100% { transform: scaleX(1)    scaleY(1)    translateY(0);    opacity: 0.8; }
+  25%       { transform: scaleX(1.05) scaleY(1.06) translateY(-3px); opacity: 1; }
+  50%       { transform: scaleX(0.97) scaleY(1.02) translateY(1px);  opacity: 0.85; }
+  75%       { transform: scaleX(1.03) scaleY(0.97) translateY(-1px); opacity: 0.95; }
+}
+
+@keyframes flameCoreFlicker {
+  0%, 100% { transform: scaleX(1)    scaleY(1)    translateX(0);    opacity: 0.9; }
+  20%       { transform: scaleX(1.1)  scaleY(1.12) translateX(-4px); opacity: 1; }
+  40%       { transform: scaleX(0.9)  scaleY(1.06) translateX(5px);  opacity: 0.72; }
+  60%       { transform: scaleX(1.06) scaleY(0.94) translateX(-2px); opacity: 1; }
+  80%       { transform: scaleX(0.95) scaleY(1.1)  translateX(3px);  opacity: 0.85; }
+}
+
+/* SVG flame tongue animations */
+.flame-t1 { animation: flameTongue1 2.1s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+.flame-t2 { animation: flameTongue2 1.7s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+.flame-t3 { animation: flameTongue3 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+.flame-t4 { animation: flameTongue4 1.4s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+
+@keyframes flameTongue1 {
+  0%, 100% { transform: scaleY(1)    scaleX(1)    translateX(0); }
+  30%       { transform: scaleY(1.09) scaleX(0.94) translateX(-3px); }
+  65%       { transform: scaleY(0.93) scaleX(1.05) translateX(4px); }
+}
+@keyframes flameTongue2 {
+  0%, 100% { transform: scaleY(1)    scaleX(1); }
+  40%       { transform: scaleY(1.14) scaleX(0.88) rotate(-2deg); }
+  72%       { transform: scaleY(0.88) scaleX(1.1)  rotate(1.5deg); }
+}
+@keyframes flameTongue3 {
+  0%, 100% { transform: scaleY(1)    scaleX(1); }
+  35%       { transform: scaleY(1.12) scaleX(0.91) rotate(2deg); }
+  68%       { transform: scaleY(0.91) scaleX(1.07) rotate(-1deg); }
+}
+@keyframes flameTongue4 {
+  0%, 100% { transform: scaleY(1)    scaleX(1);    opacity: 0.85; }
+  25%       { transform: scaleY(1.18) scaleX(0.86); opacity: 1; }
+  52%       { transform: scaleY(0.86) scaleX(1.12); opacity: 0.65; }
+  78%       { transform: scaleY(1.06) scaleX(0.94); opacity: 0.92; }
 }
 
 /* ── Banner ────────────────────────────────────────────────── */
@@ -219,7 +284,7 @@ body::before {
     "burn  totals  period-totals"
     "history history history"
     "projects projects projects";
-  grid-template-columns: 1.3fr 1fr 1fr;
+  grid-template-columns: 0.8fr 1fr 1fr;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 10px;
   padding: 10px;

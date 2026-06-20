@@ -111,7 +111,7 @@ export default function BurnRateHero({
 
   const commitThreshold = () => {
     const val = parseFloat(editValue)
-    if (!isNaN(val) && val >= 0.001) onThresholdChange(val)
+    if (!isNaN(val) && val >= 0.001) onThresholdChange(val / 60) // convert $/hr → $/min
     setEditingThreshold(false)
   }
 
@@ -127,7 +127,59 @@ export default function BurnRateHero({
         '--flame-opacity': flameOpacity,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      {/* SVG flame tongues */}
+      <svg
+        aria-hidden="true"
+        style={{
+          position: 'absolute', bottom: 0, left: 0, width: '100%', height: '90%',
+          pointerEvents: 'none', zIndex: 0,
+          opacity: flameOpacity, transition: 'opacity 1.5s ease',
+          overflow: 'visible',
+        }}
+        preserveAspectRatio="none"
+        viewBox="0 0 200 120"
+      >
+        <defs>
+          <filter id="flameTurb" x="-25%" y="-25%" width="150%" height="150%">
+            <feTurbulence type="turbulence" baseFrequency="0.025 0.055" numOctaves="3" seed="2" result="noise">
+              <animate attributeName="baseFrequency" values="0.025 0.055;0.03 0.07;0.022 0.05;0.025 0.055" dur="4s" repeatCount="indefinite" />
+              <animate attributeName="seed" values="2;6;11;2" dur="9s" repeatCount="indefinite" />
+            </feTurbulence>
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="12" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+          <linearGradient id="ftGrad1" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%"   stopColor="#ff8c00" stopOpacity="0.9" />
+            <stop offset="50%"  stopColor="#ff4500" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#ff2060" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="ftGrad2" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%"   stopColor="#ffb300" stopOpacity="0.85" />
+            <stop offset="60%"  stopColor="#ff6b35" stopOpacity="0.45" />
+            <stop offset="100%" stopColor="#ff4d6d" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="ftGrad3" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%"   stopColor="#ffe066" stopOpacity="0.8" />
+            <stop offset="65%"  stopColor="#ff8c00" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#ff4500" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <g filter="url(#flameTurb)">
+          {/* Wide base tongue */}
+          <path d="M35,120 C48,78 56,48 100,8 C144,48 152,78 165,120 Z"
+            fill="url(#ftGrad1)" className="flame-t1" />
+          {/* Left lean tongue */}
+          <path d="M15,120 C28,88 42,62 72,28 C88,58 82,88 94,120 Z"
+            fill="url(#ftGrad2)" className="flame-t2" />
+          {/* Right lean tongue */}
+          <path d="M106,120 C118,82 132,58 148,22 C166,54 168,84 178,120 Z"
+            fill="url(#ftGrad2)" className="flame-t3" />
+          {/* Inner bright core */}
+          <path d="M72,120 C82,94 92,72 100,38 C108,72 118,94 128,120 Z"
+            fill="url(#ftGrad3)" className="flame-t4" />
+        </g>
+      </svg>
+
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
         <span className="label">burn rate</span>
         {showIdle && <span className="label" style={{ color: 'var(--text-muted)' }}>idle</span>}
         {isHistorical && (
@@ -168,24 +220,26 @@ export default function BurnRateHero({
       </div>
 
       {error ? (
-        <div style={{ color: 'var(--accent-danger)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', lineHeight: 1.6 }}>
+        <div style={{ position: 'relative', zIndex: 1, color: 'var(--accent-danger)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', lineHeight: 1.6 }}>
           <div style={{ fontWeight: 600, marginBottom: 4 }}>{error}</div>
           {error.toLowerCase().includes('ccusage') && <div style={{ opacity: 0.7 }}>npm i -g ccusage</div>}
         </div>
       ) : (
-        <>
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
-              <div className="val-large" style={{ color: accentColor }}>
-                {displayTokens.toFixed(1)}
-                <span style={{ fontSize: '0.4em', color: 'var(--text-muted)', marginLeft: 6, fontWeight: 400 }}>tok/s</span>
-              </div>
-              <div className="val-medium amber">
-                ${displayCostHour.toFixed(2)}
-                <span style={{ fontSize: '0.55em', color: 'var(--text-muted)', marginLeft: 5, fontWeight: 400 }}>/hr</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.1 }}>
+                <div className="val-large" style={{ color: accentColor }}>
+                  {displayTokens.toFixed(1)}
+                  <span style={{ fontSize: '0.4em', color: 'var(--text-muted)', marginLeft: 5, fontWeight: 400 }}>tok/s</span>
+                </div>
+                <div className="val-medium amber" style={{ fontSize: '1.1rem' }}>
+                  ${displayCostHour.toFixed(2)}
+                  <span style={{ fontSize: '0.6em', color: 'var(--text-muted)', marginLeft: 4, fontWeight: 400 }}>/hr</span>
+                </div>
               </div>
             </div>
-            <div className="mono muted" style={{ fontSize: '0.7rem', opacity: showIdle ? 0 : 1, transition: 'opacity 0.3s', display: 'flex', gap: 14 }}>
+            <div className="mono muted" style={{ fontSize: '0.7rem', opacity: showIdle ? 0 : 1, transition: 'opacity 0.3s', display: 'flex', flexDirection: 'column', gap: 1 }}>
               <span>~${projectedDayCost(displaySource.costPerMin).toFixed(2)} <span style={{ fontSize: '0.85em' }}>today</span></span>
               <span>~${(projectedDayCost(displaySource.costPerMin) * 7).toFixed(2)} <span style={{ fontSize: '0.85em' }}>7d</span></span>
               <span>~${(projectedDayCost(displaySource.costPerMin) * 30).toFixed(2)} <span style={{ fontSize: '0.85em' }}>30d</span></span>
@@ -204,7 +258,7 @@ export default function BurnRateHero({
                 onBlur={commitThreshold}
                 onKeyDown={e => {
                   if (e.key === 'Enter') commitThreshold()
-                  if (e.key === 'Escape') { setEditingThreshold(false); setEditValue(threshold.toFixed(2)) }
+                  if (e.key === 'Escape') { setEditingThreshold(false); setEditValue((threshold * 60).toFixed(2)) }
                 }}
                 style={{
                   width: 62,
@@ -221,7 +275,7 @@ export default function BurnRateHero({
               />
             ) : (
               <span
-                onClick={() => { setEditValue(threshold.toFixed(2)); setEditingThreshold(true) }}
+                onClick={() => { setEditValue((threshold * 60).toFixed(2)); setEditingThreshold(true) }}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -237,15 +291,12 @@ export default function BurnRateHero({
                   transition: 'all 0.15s',
                 }}
               >
-                ${threshold.toFixed(2)}/min
+                ${(threshold * 60).toFixed(2)}/hr
                 <span style={{ fontSize: '0.55rem', opacity: 0.5, marginLeft: 2 }}>&#9998;</span>
               </span>
             )}
-            <span className="mono muted" style={{ fontSize: '0.65rem', opacity: 0.55 }}>
-              (${(threshold * 60).toFixed(2)}/hr)
-            </span>
             <button
-              onClick={() => onThresholdChange(+(threshold + 0.01).toFixed(2))}
+              onClick={() => onThresholdChange(+(threshold + 1/60).toFixed(5))}
               style={{
                 background: 'rgba(255,255,255,0.05)',
                 border: '1px solid var(--card-border)',
@@ -257,10 +308,10 @@ export default function BurnRateHero({
                 lineHeight: '18px',
                 fontFamily: 'var(--font-mono)',
               }}
-              title="Increase by $0.01"
+              title="Increase by $1/hr"
             >+</button>
             <button
-              onClick={() => onThresholdChange(Math.max(0.001, +(threshold - 0.01).toFixed(2)))}
+              onClick={() => onThresholdChange(Math.max(1/60 * 0.1, +(threshold - 1/60).toFixed(5)))}
               style={{
                 background: 'rgba(255,255,255,0.05)',
                 border: '1px solid var(--card-border)',
@@ -272,10 +323,10 @@ export default function BurnRateHero({
                 lineHeight: '18px',
                 fontFamily: 'var(--font-mono)',
               }}
-              title="Decrease by $0.01"
+              title="Decrease by $1/hr"
             >−</button>
           </div>
-        </>
+        </div>
       )}
     </div>
   )
